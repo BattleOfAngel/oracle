@@ -1,0 +1,329 @@
+set linesize 100 ;
+set pagesize 30 ;
+COL ename for A10;
+COL  job for A10;
+Select * FROM emp;
+SELECT [DISTINCT] * |列[别名],列[别名],... FROM 表名称[别名]
+如果在SELECT子句之中使用了"*"表示的是查询一张表中的所有数据列
+SELECT * FROM EMP; 
+在本程序之中,FROM子句是表结构(行与列的集合),而SELECT子句控制所需要的数据列。
+范例 :进行数据的投影 --控制所需要显示的数据列
+SELECT empno 雇员编号,ename 姓名,sal*12 年薪 from EMP;
+SELECT empno || ename From emp;(连接)
+SELECT empno || ename  From emp;
+SELECT empno || 'hello'  From emp;
+SELECT '编号:'|| empno  || ',姓名:' || ename from emp;
+select DISTINCT job from emp;如果消除重复内容,指的是查询出来数据所有列的内容都重复
+SELECT DISTINCT ename,job from emp;姓名和职位没有同时重复,那么将无法删除掉重复数据.
+简单查询中的最大特征在于:控制数据列,但是它无法进行数据行的控制。
+
+【③选出所需要的数据列】SELECT [DISTINCT] * |列 [别名],列 [别名]...
+【①确定数据来源】FROM 表名称 [别名]
+【②筛选数据行】[WHERE 限定条件(s)]
+SELECT * FROM EMP WHERE sal<1200;
+
+SELECT *
+FROM emp
+WHERE sal<1200;
+
+SELECT *
+FROM emp
+WHERE sal=3000;
+
+SELECT *
+FROM emp
+WHERE ename='SMITH';
+
+SELECT *
+FROM emp
+WHERE ename='SMITH';
+查询职位不是办事员的雇员(职位是job字段,办事员的职位名称CLERK)
+ SELECT *
+FROM emp
+WHERE job<>'CLERK';
+ SELECT *
+FROM emp
+WHERE job!='CLERK';
+
+逻辑运算
+连接多个条件,主要使用and,or
+要求查询出不是办事员,但是工资低于3000的雇员信息
+不是办办事员: jib<>'CLERK';
+工资低于3000: sal<3000;
+两个条件同时满足 AND连接
+
+SELECT *
+FROM emp
+WHERE job<>'CLERK' AND sal<3000;
+
+查询出职位不是办事员也不是销售的雇员信息
+job<>'CLERK'
+job<>'SALESMAN' 
+使用AND连接
+SELECT *
+FROM emp
+WHERE job<>'CLERK' AND job<>'SALESMAN';
+
+查询出所有职位是办事员,或者工资低于1200的所有雇员
+1:job='CLERK'
+2:sal<1200;
+两个条件满足一个即可,使用OR连接
+SELECT *
+FROM emp
+WHERE job='CLERK' OR sal<1200;
+
+除了AND与OR之外,还可以使用NOT进行求反
+SELECT * FROM emp WHERE NOT sal>2000;
+此时表示的是工资小于等于2000
+范围运算:BETWEEN...AND
+WHERE 字段|数值 BETWEEN 最小值 AND 最大值
+查询工资在1500 - 3000之间的雇员
+SELECT * FROM emp WHERE sal>=1500 AND sal<=3000;
+SELECT * FROM emp WHERE sal BETWEEN 1500 AND 3000; 一个运算符效率更高
+在ORACL中所有运算符都不受数据类型的控制
+
+查询出所有在1981年雇佣的雇员信息
+1981 1-1('01-1月-1981')~ 1981 12-31('31-12月-1981') ,这个时候可以按照已有的数据结构通过字符串来描述。
+SELECT *
+FROM emp
+WHERE hiredate BETWEEN '01-1月-1981'AND '31-12月-1981';
+
+SELECT * FROM emp
+WHERE ename BETWEEN 'ALLEN' AND 'CLARK';
+
+空判断
+
+null从数据库定义上属于一个未知的数据,任何情况下如果任何一个数字与null计算结果还是null
+在某些数据列上是允许存在有null值的,但是对于null不能使用关系运算判断,关系可以判断的是数据,null不是
+空字符串与不是数字0,所以在SQL之中只能够通过is null/is not null来判断
+查询出所有领取佣金的雇员信息(comm字段表示的是佣金)
+SELECT * 
+FROM emp
+WHERE comm is NOT null;
+
+IN操作符
+IN指的是根据一个指定的范围进行数据查询
+查询出雇员编号是7369,7566,7788,9999的雇员信息
+利用关系运算符
+SELECT * FROM
+emp WHERE empno=7369 OR empno=7566 OR empno =7788 OR empno =9999;
+利用IN操作
+SELECT * FROM
+emp WHERE empno IN(7369,7566,7788,9999);
+NOT IN 表示不在这个范围之中
+SELECT * FROM
+emp WHERE empno NOT IN(7369,7566,7788,9999);
+在使用NOT IN 的时候如果查找的数据范围之中含有null值,那么不会有任何的结果返回,
+IN操作无此限制(重点)
+
+SELECT * FROM
+emp WHERE empno NOT IN(7369,7566,7788,null);
+
+模糊查询:LIKE
+"_":匹配任意的一位符号
+"%":匹配任意的符号(包含匹配0位,1位,多位)
+查询所有雇员姓名中以字母A开头的雇员信息
+第一个字母A是固定的,而后的内容随意
+
+SELECT * 
+FROM emp
+WHERE ename LIKE 'A%';
+
+查询所有雇员姓名中第二个字母是M的所有雇员
+第一位可以任意,但必须占一位,使用"_";
+后面的位随意,使用"%";
+SELECT * FROM emp
+WHERE ename LIKE '_A%';
+
+查询雇员姓名中任意位置上存在有字母A的雇员信息
+开头,结尾,中间都可以,使用"%A%"
+后面的位随意,使用"%";
+SELECT * FROM emp
+WHERE ename LIKE '%A%';
+
+关于LIKE的亮点说明
+
+如果在使用LIKE进行限定查询的时候,没有设置任何关键字,那么表示查询全部
+SELECT * FROM emp WHERE ename LIKE '%%';
+
+LIKE可以在任意的数据类型上(原生支持)。
+SELECT * FROM emp WHERE ename LIKE '%A%' OR sal LIKE'%1%' OR hiredate LIKE'%81%';
+一般都在字符串上使用,系统搜索功能都是通过此语句实现,但是不包含搜索引擎的实现。
+
+【③选出所需要的数据列】SELECT [DISTINCT] * |列 [别名],列 [别名]...
+【①确定数据来源】FROM 表名称 [别名]
+【②筛选数据行】[WHERE 限定条件(s)]
+【④筛选数据行】[ORDER BY 排序字段 [ASC|DESC],排序字段 [ASC|DESC],...],
+   既然 ORDERBY是在SELECT子句之后执行,那么就意味着ORDERBY可以使用SELECT子句定义的别名
+   但是对于字段排序有两种形式
+		· 升序 :ASC ,默认不写排序也是升序
+		· 降序 :DESC,由高到低进行排序
+	范例:按照工资由高到低排序,此时应该使用的是一个降序
+	SELECT * FROM emp ORDER BY sal DESC;
+	排序可以在任意数据类型上进行,包括字符串、日期都可以;
+	范例:按照雇佣日期由早到晚排序
+	SELECT * FROM emp ORDER BY hiredate ASC;
+	除了可以进行单一字段排序,也可以进行字段的混合排序.指的是可以进行若干个字段的排序.
+	范例:按照工资由高到低排序(降序),如果工资相同,则按照日期由早到晚排序(升序)
+	SELECT * FROM emp ORDER BY sal DESC,hiredate;
+	所有的排序操作都是在WHERE筛选之后进行的。
+范例:查询出所有办事员的编号、职位、年薪	,按照年薪由高到低排序
+
+SELECT empno,job,sal*12 income FROM emp WHERE job='CLERK' ORDER BY income DESC;
+总结:
+  1、 SELECT 子句确定数据列
+  2、 WHERE 子句控制数据行
+  3、 ORDER BY 子句永远最后执行
+  
+  总结
+   1.基本语法结构 :SELECT ,FROM ,WHERE ,ORDER BY;
+   2.数据表的结构一定要掌握
+   
+  字符串函数
+  1.
+SELECT LOWER('Hello') FROM emp; 
+SELECT DISTINCT LOWER('Hello') FROM emp;   
+
+使用虚拟表dual
+SELECT LOWER('Hello'),UPPER('Hello') FROM dual; 
+
+SELECT * FROM emp WHERE ename='&inputname';
+
+原值    1: SELECT * FROM emp WHERE ename='&inputname'
+新值    1: SELECT * FROM emp WHERE ename='smith'
+	用户在进行数据输入的时候几乎不会去考虑大小写,所以为了保证数据可以正常的查询,需要对输入数据
+进行处理,由于在数据表之中所有的数据都是大写,那么就可以在接收数据之后将其全部转换为大写
+SELECT * FROM emp WHERE ename=UPPER('&inputname');	
+	所以在一些要求严格的操作环境下,对于不区分大小写操作的时候基本上有两种做法
+		一:在数据保存的时候将所有数据统一变为大写或小写字母,这样在查询的时候就可以直接利用特定的函数进行处理
+		二:在数据保存的时候按原始方式保存,而在查询的时候将每一数据中的字母都转换为大写查询
+			在所有不区分大小写操作的项目之中时,保存数据时就必须对数据进行处理。
+		
+2 .首字母大写
+
+SELECT INITCAP('HelloWorld') FROM dual;		
+除了首字母变为大写外,其余的字母都是小写
+
+SELECT INITCAP(ename) FROM emp;	
+
+3. 计算字符串长度
+	
+	查询出每个雇员姓名以及雇员姓名长度
+ 	SELECT ename,LENGTH(ename) FROM emp;
+那么所有的单行函数可以在sql语句的任意位置上出现
+	查询雇员姓名长度为5的所有雇员
+	SELECT * FROM emp WHERE LENGTH(ename)=5;
+
+4.字符串替换 
+	将所有雇员姓名之中的字母A替换为"_";
+SELECT REPLACE(ename,UPPER('a'),'_') FROM emp;	
+  实际上利用REPLACE()函数可以取消掉字符串中的全部空格数据
+  SELECT REPLACE('hello world hello goodbye',' ','') FROM dual;
+5 .字符串的截取
+	语法一:字符串 SUBSTR(列| 数据,开始点),从指定的开始点一直截取到结尾
+	语法二:字符串 SUBSTR(列| 数据,开始点,长度):截取指定范围的子字符串。
+  helloworldnihao
+  
+ SELECT SUBSTR('helloworldnihao',11) FROM dual; 
+ SELECT SUBSTR('helloworldnihao',6,5) FROM dual; 
+但是对于SUBSTR要记住一点,它的下标是从1开始的,也就是说在进行截取的时候字符串从1开始作为索引下标,
+即使设置的是0,也会按照1来处理
+ SELECT SUBSTR('helloworldnihao',0,5) FROM dual; 
+ SELECT SUBSTR('helloworldnihao',1,5) FROM dual;
+ 
+ 要求截取每一位雇员姓名的前三位字母
+ SELECT ename,SUBSTR(ename,1,3) FROM emp;
+  但是现在要求进行改变,截取每个姓名的后三个字母,这时候会有两种做法:
+  传统做法:如果要进行截取,那么首先一定要确认出截取的开始点,由于每个姓名的长度是不一样的,
+ 所以开始点也是不一样的。那么此时最好的做法是进行计算,使用LENGTH()来计算长度
+  SELECT ename,LENGTH(ename)-2,SUBSTR(ename,LENGTH(ename)-2) FROM emp;
+  
+ SUBSTR()可以设置负数索引
+  SELECT ename,SUBSTR(ename,-3) FROM emp;
+ 实际上只有ORACLE才会支持这种负数的索引设计,其他的任何语言都没有
+ 
+ 3.2
+ 数值函数
+ 数值函数就是针对数字进行处理的,主要有三个ROUND(),TRUNC(),MOD()。
+ 
+ 1 四舍五入操作
+  语法:数字 ROUND(列| 数字[,保留小数位]),如果不设置保留小数位表示不保留
+  SELECT
+	ROUND(78915.67823823),  78916,小数点之后的内容直接进行四舍五入
+	ROUND(78915.67823823,2), 78915.68, 保留两位小数
+	ROUND(78915.67823823,-2), 78900, 把不足5的数据取消了
+	ROUND(78985.67823823,-2), 79000, 如果超过了5则进行进位
+	ROUND(-15.65) -16
+  FROM dual;
+ 2.截取小数,所有的小数都不进位
+  语法:数字 TRUNC (列|数字 [,小数位])
+  
+   SELECT
+	TRUNC(78915.67823823),   78915
+	TRUNC(78915.67823823,2), 78915.67
+	TRUNC(78915.67823823,-2), 78900
+	TRUNC(78985.67823823,-2), 78900
+	TRUNC(-15.65) 15
+  FROM dual;
+  不进行任何进位
+  3 、求模(求余数)
+  语法 :数字 MOD(列1|数字1,列2|数字2)
+  
+  SELECT MOD(10,3) FROM dual;
+  商3余1,所以模就是1
+  
+  3.3日期函数(Oracle自己的特色)
+  数据伪列,指的它是一个列,但是这个列不存在表中,可是可以像表的列一样进行查询
+  SYSDATE
+  SELECT ename,hiredate,SYSDATE FROM emp;
+  SELECT SYSDATE,SYSTIMESTAMP FROM dual;
+  实际上对于日期时间提供以下三种计算模式
+	-日期 + 数字 = 日期(若干天之后的日期);
+	-日期 - 数字 = 日期(若干天之前的日期);
+	-日期 - 日期 = 数字(两个日期间的天数)
+  若干天之后的日期
+  SELECT SYSDATE+10,SYSDATE+120,SYSDATE+9999 FROM dual;
+ 
+ 计算每一位雇员到今天为止的雇佣天数
+  SELECT ename,hiredate,SYSDATE-hiredate FROM emp;
+  如果现在只是依靠天数很难得到准确的年或者月,为了准确进行计算,在ORACLE里才提供有日期处理,
+  这些函数避免掉闰年或闰月问题。
+  1.计算两个日期间所经历的月数总和:
+	语法:数字 MONTHS_BETWEEN(日期1,日期2)
+  计算每一位雇员到今天为止的雇佣总月数
+  SELECT ename,hiredate,MONTHS_BETWEEN(SYSDATE,hiredate) FROM emp;
+  计算每一位雇员到今天为止所雇佣的年限
+  SELECT ename,hiredate,TRUNC(MONTHS_BETWEEN(SYSDATE,hiredate)/12) year FROM emp;
+2. 增加若干月之后的日期
+	语法 : 日期 ADD_MONTHS(日期,月数)
+  SELECT ADD_MONTHS(SYSDATE,4) FROM dual;	
+  利用这种方式增加的月可以避免掉润年、闰月的问题。
+ 计算所有还差1年满38年雇佣日期的全部雇员。(37年)
+ SELECT * FROM emp WHERE TRUNC(MONTHS_BETWEEN(SYSDATE,hiredate)/12)=37;
+3.计算指定日期所在月的最后一天;
+  语法:日期 LAST_DAY(日期)
+  SELECT LAST_DAY(SYSDATE) FROM dual;
+ 查询出所有在雇佣所在月倒数第二天被雇佣的雇员日期
+ 每个雇员的雇佣日期是不一样的,所以每一个雇佣日期所在月的倒数第二天也不一样
+ 首先应该知道每一位雇员雇佣月的最后一天,而后用日期 - 数字 =日期 计算出倒数第二天。
+ SELECT ename ,hiredate,LAST_DAY(hiredate)-2 FROM emp WHERE LAST_DAY(hiredate)-2=hiredate;
+4.计算下一个指定的日期 
+  日期 next_day(日期,一周时间数)
+ 计算下一个周二
+ SELECT NEXT_DAY(SYSDATE,'星期二') FROM dual;
+[了解] 综合分析: 要求查询出雇员的编号、姓名、雇佣日期,以及每一位雇员到今天为止所被雇佣的年数月数天数
+	 WARD    7698 22-2月 -81    38年3个月8天
+ 对于本查询而言,由于日期的跨度较长,想要准确计算,需使用日期函数
+ 第一步:计算年
+	计算年按照月来计算
+	SELECT empno,ename,hiredate,TRUNC(MONTHS_BETWEEN(SYSDATE,hiredate)/12) year,
+	TRUNC(MOD(MONTHS_BETWEEN(SYSDATE,hiredate),12)) months,
+	TRUNC(SYSDATE-ADD_MONTHS(hiredate,MONTHS_BETWEEN(SYSDATE,hiredate))) day
+	FROM emp;
+ 第二步:计算月
+  在进行年计算的时候就包含余数,余数实际上就是除12的结果,所以就是月数,利用MOD函数求出余数。
+ 第三部:计算天
+           日期1 - 日期2 =数字(天数)
+  日期1 - 一定是当前日期,SYSDATE
+  日期2 - 实际上已经可以用MONTHS_BETWEEN()函数求出两个日期之间的月数
+  
