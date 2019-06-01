@@ -327,3 +327,45 @@ SELECT REPLACE(ename,UPPER('a'),'_') FROM emp;
   日期1 - 一定是当前日期,SYSDATE
   日期2 - 实际上已经可以用MONTHS_BETWEEN()函数求出两个日期之间的月数
   
+ 3.4 转换函数
+    可以实现字符串,日期,数字的转换 TO_CHAR(),TO_DATE(),TO_NUMBER
+ 1.转换字符创函数
+  语法 :字符串 TO_CHAR(列| 日期 | 数字 ,转换格式)
+   -日期转换为字符串 :年(yyyy)、月(mm)、日(dd)、时(hh、hh24)、分（mi）、秒（ss）；
+   -数字转换为字符串 任意的一位数字（9）、货币(L,本地货币)。
+   SELECT TO_CHAR(SYSDATE,'yyyy-mm-dd'),TO_CHAR(SYSDATE,'yyyy-mm-dd hh24:mi:ss') FROM dual;
+   日期要想改变格式,最终的数据类型就是字符串
+   这样转换实际上会破坏程序的一致性
+     查询出每个雇员的编号,姓名,雇佣年份
+	 SELECT empno,ename,TO_CHAR(hiredate,'yyyy') year FROM emp;
+	 查询出所有在2月雇佣的雇员信息
+	  SELECT * FROM emp WHERE TO_CHAR(hiredate,'mm')='02';
+	  SELECT * FROM emp WHERE TO_CHAR(hiredate,'mm')=2;
+	  ORACLE提供自动根据类型转换
+  	  TO_CHAR()数字转换往往是对数字可读性的一些格式化操作
+	  SELECT TO_CHAR(78923489043209,'L999,999,999,999,999') FROM dual;
+  
+  2.转换日期函数
+   如果某个字符串按照"日-月-年"的方式编写,那么可以自动转换成为日期类型
+ 也可以将指定字符串转换为日期类型 
+    语法 TO _DATE(字符串,转换格式);
+  实现字符串转换日期
+SELECT TO_DATE('1998-09-19','yyyy-mm-dd') FROM dual;  
+  3.转字数函数
+  语法:数字 TO_NUMBER(字符串)
+ SELECT TO_NUMBER('1')+TO_NUMBER('2') FROM dual; 
+ SELECT '1'+'2' FROM dual;
+ 
+ 3.5 通用函数(Oracle自己的特色)
+ 1.处理null
+ SELECT empno,ename,job,sal,(sal+NVL(comm,0))*12 FROM emp;
+ 发现数字内容为空,往往需要0来替代,可以用NVL()函数来解决此类问题。
+ 语法 :NVL(列| null,为空的默认值)。如果列上的数据不为空,则使用列的数据
+ 如果为空则使用默认值
+ 
+ 2.多数值判断
+	语法:DECODE(列,匹配内容1,显示内容1,匹配内容2,显示内容2,...[,默认值])
+ SELECT empno,ename,job,DECODE(job,'CLERK','办事员','SALESMAN','销售') FROM emp;
+ SELECT empno,ename,job,DECODE(job,'CLERK','办事员','SALESMAN','销售','MANAGER','经理','ANALYST','分析','PRESIDENT','老板','暂无此信息') FROM emp;
+ 
+ 
