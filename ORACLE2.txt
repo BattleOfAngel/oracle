@@ -1,0 +1,473 @@
+多表查询
+	查询一:SELECT COUNT(*) FROM dept; 4
+	查询二:SELECT COUNT(*) FROM emp; 14
+ 实现多表查询
+   SELECT * FROM emp,dept; 
+  产生了4*14=56行数据
+之所以出现这样的情况,主要是数据库的产生原理有关 -- 数学的集合。
+在这样的集合操作中  (数据表)的统一查询作为乘法的形式出现。结果一定会产生积--迪卡尔积
+在任何情况下进行多表查询一定会存在有笛卡尔积的问题。事实上这些积的产生对用户没有任何实质上的帮助,
+应该想办法消除,如果想消除积,那么必须有关联字段。
+一般将关联字段设置为同名
+
+消除笛卡尔积
+SELECT * FROM emp,dept WHERE emp.deptno=dept.deptno;
+那么可以得出一个结论,只要多表查询,多张表一定要有关联关系
+在进行多表查询强烈建议使用别名
+SELECT e.*,d.dname FROM emp e,dept d WHERE e.deptno=d.deptno;
+ 实际上迪卡尔积对整个程序影响是相当巨大的,即便现在可以消除显示的笛卡尔积,但是从本质上来讲,
+ 永远无法避免笛卡尔积。
+ 例如:在oracle的样本数据中有sh的大数据用户。
+ 分析:
+ SELECT COUNT(*) FROM COSTS; (82112)
+ SELECT COUNT(*) FROM SALES; (918843)
+ 这两张表存在关联字段,理论上是可以消除迪卡尔积
+ 观察多表查询
+ SELECT COUNT(*) FROM COSTS c,SALES s WHERE c.prod_id=s.prod_id;
+ 虽然消除了显示的迪卡尔积,但是迪卡尔积却一直存在着,是永远无法消除的,那么说
+ 表数据量小还可以承受,如果数据量一大,那么多表查询直接会带来严重的性能问题
+ 如果想判断程序慢有两个方式:程序算法慢(CPU占用高)、数据库数据大(内存占用率高)
+ 在实际开发中的选中(由设计开始的)过程之中看你的表的预期数据量。
+ 
+ 多表查询的操作实例
+要求查询出每个雇员的编号、姓名、职位、基本工资、部门名称、部门位置
+ -确定要使用的数据表
+  -emp表 :雇员的编号、姓名、职位、基本工资
+  -dept表:部门名称、部门位置
+ -确定已知的关联字段
+ emp.deptno=dept.deptno
+ SELECT e.ename , e.empno,e.job,e.sal,d.dname,d.loc FROM emp e,dept d WHERE e.deptno=d.deptno;
+  要求查询出每个雇员的编号,姓名,职位,基本工资,工资等级。
+  SELECT * FROM salgrade;
+  SELECT  e.ename,e.job,e.sal,e.empno,s.grade FROM emp e ,salgrade s WHERE e.sal BETWEEN s.losal AND s.hisal;
+  查询出每个雇员的编号、姓名、职位、基本工资、部门名称、工资等级
+  SELECT e.empno,ename,e.job,e.sal,d.dname,s.grade FROM emp e,
+  dept d,salgrade s WHERE e.deptno=d.deptno AND e.sal BETWEEN s.losal AND s.hisal;
+  
+ 表的连接 
+  -内连接:在之前都利用的WHERE子句消除了笛卡尔积,这就属于内连接,只有满足条件的数据才会显示
+  -外连接:分为三种,左外连接,右外连接,全外连接。
+ 为了更好的观察到连接的区别,现在已经在dept表中提供了一个没有雇员的部门(40),同时增加一个
+没有部门的员工 
+INSERT INTO emp (empno,ename,deptno) VALUES (8989,'HELLO',null);
+内连接效果
+SELECT e.ename,e.empno,d.deptno,d.dname FROM emp e,dept d WHERE e.deptno=d.deptno;
+此时没有部门的雇员以及没有雇员的部门信息都没有出现,因为null的判断不满足
+左连接效果,希望所有的雇员信息都显示出来,即便他没有对应的部门
+SELECT e.ename,e.empno,d.deptno FROM emp e LEFT JOIN dept d ON d.deptno=e.deptno;
+SELECT e.ename,e.empno,d.deptno FROM emp e,dept d WHERE e.deptno=d.deptno(+);
+此时没有部门的雇员出现了,也就是说左边的数据全部显示了。
+右连接效果
+将所有的部门信息显示出来
+SELECT e.empno,e.ename,d.deptno FROM emp e,dept d WHERE e.deptno(+)=d.deptno;
+SELECT e.empno,e.ename,d.deptno FROM emp e RIGHT JOIN dept d ON e.deptno=d.deptno;
+内连接指的就是所有满足关联条件的数据出现,不满足的不出现。外连接就是指定一张数据表中全部内容都显示,
+但是没有对应的其他数据,内容为null。
+在ORACLE里面使用"(+)" 来控制连接方式:
+ 左外连接:关联字段1=关联字段2(+);
+ 右外连接:关联子段1(+)关联字段2;
+大部门情况下一般只会考虑内连接,但是所需要的数据不全的时候就可以考虑外连接
+  查询每个雇员的编号,姓名,职位,领导姓名,领导职位。
+  emp.mgr=memp.empno(雇员和领导)
+ SELECT e.empno,e.ename,e.job FROM emp e; 
+ 加入领导信息,引入自身关联
+  SELECT e.empno,e.ename,e.job,m.ename,m.job FROM emp e,emp m WHERE e.mgr=m.empno; 
+  发现emp表(雇员信息)数据不完整,因为不满足于等值关联判断,所以要想数据完整需要使用外连接控制
+  SELECT e.empno,e.ename,e.job,m.ename,m.job FROM emp e,emp m WHERE e.mgr=m.empno(+);
+SQL:1999语法定义
+ 对于数据表的连接操作,从实际使用来讲各个数据库都是有支持的,所以最好的做法是利用以下语法
+SELECT [DISTINCT] * |列[别名] ,列[别名],...
+FROM 表 1[别名]
+	[CROSS JOIN 表2[别名]]
+	[NATURAL JOIN 表2[别名]]
+	[JOIN 表2[别名] ON(条件)|USING(关联字段)]
+	 [LEFT | RIGHT | FULL OUTER JOIN 表2[别名] ON(条件)]
+个人在进行表连接的时候,如果是内连接一定使用等值判断。如果是外连接才会使用
+LEFT,FULL,OUTER等操作。
+	*	1.交叉连接:目的是产生笛卡尔积 语法:
+		SELECT [DISTINCT] * |列[别名] ,列[别名],...
+		FROM 表 1[别名] CROSS JOIN 表2[别名];
+		 SELECT * FROM emp CROSS JOIN dept;
+		2.自然连接:利用关联字段自己进行笛卡尔积的消除(只要字段名称相同自己匹配)
+		SELECT [DISTINCT] * |列[别名] ,列[别名],...
+		FROM 表 1[别名] NATURAL JOIN 表2[别名];
+		实现自然连接(内连接)
+		 SELECT * FROM emp NATURAL JOIN dept;
+		 利用ON子句指定关联条件,而利用USING子句设置关联字段
+		 范例:利用USING子句设置关联字段实现自然连接
+		 SELECT * FROM emp JOIN dept USING(deptno);
+		 范例:利用ON子句设置关联条件
+		 SELECT * FROM emp e JOIN dept d ON(e.deptno=d.deptno);
+3.外连接:语法:
+SELECT [DISTINCT] * |列[别名] ,列[别名],...	
+ [LEFT | RIGHT | FULL OUTER JOIN 表2[别名]];	 
+范例:左外连接
+SELECT * FROM emp e LEFT OUTER JOIN dept d ON(e.deptno=d.deptno);
+范例:右外连接
+SELECT * FROM emp e RIGHT OUTER JOIN dept d ON(e.deptno=d.deptno);
+范例:全外连接
+SELECT * FROM emp e FULL OUTER JOIN dept d ON(e.deptno=d.deptno);
+
+3.5 数据集合操作
+数据集合:交集、并集、差集、补集。
+每一次查询实际上都会返回数据集合,所以返回的结果上可以使用
+UNION、UNION ALL、MINUS、INTSECT实现集合操作,此时语法为以下形式
+SELECT [DISTINCT] * |列 [别名],列 [别名]...
+FROM 表名称 [别名]
+[WHERE 限定条件(s)]
+[ORDER BY 排序字段 [ASC|DESC],排序字段 [ASC|DESC],...]
+   UNION | UNION ALL |INTERSECT | MINUS
+SELECT [DISTINCT] * |列 [别名],列 [别名]...
+FROM 表名称 [别名]
+[WHERE 限定条件(s)]
+[ORDER BY 排序字段 [ASC|DESC],排序字段 [ASC|DESC],...]
+   UNION | UNION ALL |INTERSECT | MINUS
+SELECT [DISTINCT] * |列 [别名],列 [别名]...
+FROM 表名称 [别名]
+[WHERE 限定条件(s)]
+[ORDER BY 排序字段 [ASC|DESC],排序字段 [ASC|DESC],...]
+   SELECT * FROM emp UNION
+   SELECT * FROM emp WHERE deptno=10;
+  此时的查询结果已经连接在一起了,但是UNION的处理过程是属于取消重复元素。
+  范例:UNION ALL
+  SELECT * FROM emp UNION ALL
+  SELECT * FROM emp WHERE deptno=10;
+  范例:验证INTERSECT操作(交集)
+  SELECT * FROM emp INTERSECT
+  SELECT * FROM emp WHERE deptno=10;
+  范例:返回差集,使用的是减分
+  SELECT * FROM emp MINUS
+  SELECT * FROM emp WHERE deptno=10;
+ 可是在使用集合操作之中有一件非常重要的注意事项,由于集合的操作最终是需要将
+若干个查询结果合并为一个查询,所以要求着若干个查询结果返回的数据结构必须相同。
+ SELECT ename,job FROM emp WHERE deptno=10
+	INTERSECT
+  SELECT ename,sal FROM emp ; 
+第 1 行出现错误:
+ORA-01790: 表达式必须具有与对应表达式相同的数据类型  
+
+3.1 统计函数(分组函数)
+    统计个数: COUNT(),根据表中的实际数据量返回结果
+	求和: SUM(),是针对于数字的统计;
+	平均值: AVG(),是针对于数字的统计;
+	最小值: MIN(),各种数据类型都支持;
+	最大值: MAX(),各种数据类型都支持;
+范例:验证各个函数
+SELECT COUNT(*) 人数,AVG(sal) 员工平均工资,SUM(sal) 每月总支出,MAX(sal) 最高工资,MIN(sal) 最低工资
+FROM emp;
+这些统计函数是允许和其他函数嵌套的。
+范例:统计出公司的平均雇佣年限
+SELECT AVG(MONTHS_BETWEEN(SYSDATE,hiredate)/12) FROM emp;
+范例:求出最早和最晚的雇佣日期
+SELECT MAX(hiredate) 最晚,MIN(hiredate) 最早 FROM emp;
+以上的几个操作函数,在表中没有数据的时候,只有COUNT()会返回结果,其他都是null
+统计bonus表
+SELECT COUNT(*) 人数,AVG(sal) 员工平均工资,SUM(sal) 每月总支出,MAX(sal) 最高工资,MIN(sal) 最低工资
+FROM bonus;
+实际上针对于COUNT()函数有三种使用形式
+-COUNT(*);可以准确的返回表中的全部记录数
+-COUNT(字段);统计不为null的字段
+-COUNT(DISTINCT 字段);消除重复数据之后的结果
+范例:统计查询一
+SELECT COUNT(*),COUNT(empno),COUNT(comm) FROM emp;
+  COUNT(*) COUNT(EMPNO) COUNT(COMM)
+---------- ------------ -----------
+        14           14           4
+		
+SELECT COUNT(DISTINCT job)FROM emp;	
+	
+3.2 分组统计
+分组的前提是存在有重复,但是允许单独一行记录进行分组。
+如果要进行分组则应该使用GROUP BY子句完成,那么SQL语法结构变为如下形式
+【④选出所需要的数据列】SELECT [DISTINCT] * |分组列 [别名],分组列 [别名]...
+【①确定数据来源】FROM 表名称 [别名]
+【②筛选数据行】[WHERE 限定条件(s)]
+【③针对于筛选的行分组】[GROUP BY 分组字段,分组字段,...]
+【⑤筛选数据行】[ORDER BY 排序字段 [ASC|DESC],排序字段 [ASC|DESC],...],
+范例:根据部门编号分组,查询出每个部门的编号,人数,平均工资
+SELECT deptno,COUNT(*),AVG(sal) FROM emp GROUP BY deptno;
+范例:根据职位分组,统计出每个职位的人数,最低工资与最高工资
+SELECT job,COUNT(*),MIN(sal),MAX(sal) FROM emp GROUP BY job;
+ 实际上GROUP BY子句之所以使用麻烦,是因为分组的时候有一些约定条件
+ -如果查询不使用GROUP BY 子句,那么SELECT子句中只允许出现统计函数,其他任何字段不允许出现
+   错误代码                                          正确代码
+SELECT empno,COUNT(*) FROM emp;						 SELECT COUNT(*) FROM emp;
+       *
+第 1 行出现错误:
+ORA-00937: 不是单组分组函数
+  -如果查询中使用了GROUP BY 子句,那么SELECT子句中只允许出现分组字段,统计函数,其他任何字段都不允许出现
+	错误代码                                           正确代码					
+SELECT ename,job,COUNT(*) FROM emp GROUP BY job;	  SELECT job,COUNT(*) FROM emp GROUP BY job;
+       *
+第 1 行出现错误:
+ORA-00979: 不是 GROUP BY 表达式
+  -统计函数允许嵌套,但是嵌套之后的SELECT子句里面只允许出现嵌套函数,而不允许出现任何字段,包括分组字段
+  	错误代码                                           正确代码					
+SELECT deptno,MAX(AVG(sal)) FROM emp GROUP BY deptno;	SELECT MAX(AVG(sal)) FROM emp GROUP BY deptno;
+       *
+第 1 行出现错误:
+ORA-00937: 不是单组分组函数
+ 整个分组统计就以上的三点对于初学者很麻烦
+ 
+ 3.3 多表查询与分组统计
+范例:查询出每个部门名称、部门人数、平均工资
+确定要使用的数据表:
+ -dept表:部门名称;
+ -emp表:统计数据;
+确定已知的关联字段;
+ -雇员与部门:emp.deptno=dept.deptno
+第一步:换个思路,查询出每个部门的名称、雇员编号（COUNT(empno)）、基本工资(AVG(sal))
+SELECT d.dname,e.empno,e.sal FROM emp e,dept d
+WHERE e.deptno=d.deptno;
+第二部:此时的查询结果中对于部门名称出现了重复的内容,按照分组来讲只要是出现了数据重复,就可以进行分组,
+只不过此时的分组是针对于临时表(查询结果)。既然已经确定了dname上有重复数据,那么就直接针对于dname1分组即可。
+SELECT d.dname,COUNT(e.empno),AVG(e.sal) FROM emp e,dept d
+WHERE e.deptno(+)=d.deptno GROUP BY d.dname;
+第三部:在dept表实际上存在有四个部门信息,而此时的要求也是统计所有的部门名称,如果发现数据不完整,立刻使用外连接
+范例:查询每个部门的编号、名称、位置、部门人数、平均工资。
+确定要使用的数据表:
+ -dept表:名称,编号,位置;
+ -emp表:统计信息;
+确定已知的关联字段;
+ -雇员与部门:emp.deptno=dept.deptno
+第一步:查询每个部门的编号,名称,位置,雇员编号(COUNT(empno)),工资(AVG(sal))
+SELECT d.dname,d.deptno,d.loc,e.empno,e.sal FROM emp e,dept d
+WHERE e.deptno(+)=d.deptno; 
+第二部:此时发现有三个列(dept表)发生重复,那么就可以进行多字段分组
+SELECT d.dname,d.deptno,d.loc,COUNT(e.empno),AVG(e.sal) FROM emp e,dept d
+WHERE e.deptno(+)=d.deptno
+GROUP BY d.deptno,d.dname,d.loc; 
+
+3.4 HAVING子句
+现在要求查询出每个职位的名称,职位的平均工资,但是要求显示的职位的平均工资高于2000.
+即:按照职位先进行分组,同时统计出每个职位的平均工资;
+随后要求只显示那些平均工资高于2000的职位信息.那么既然现在要对显示的数据进行筛选,那么自然会想到
+WHERE子句,于是就写了如下代码.
+SELECT job,AVG(sal) FROM emp WHERE AVG(sal)>2000 GROUP BY job;
+                                   *
+第 1 行出现错误:
+ORA-00934: 此处不允许使用分组函数
+此时直接告诉用户,WHERE子句上不允许出现统计函数(分组函数),因为GROUP BY子句是在WHERE子句之后执行的,
+那么此时执行WHERE子句时还没有进行分组了,那么就自然无法进行统计。所以在这样的情况下使用另外一个子句完成
+:HAVING子句,此时的SQL语法结构变为如下形式
+【⑤选出所需要的数据列】SELECT [DISTINCT] * |分组列 [别名],分组列 [别名]...
+【①确定数据来源】FROM 表名称 [别名]
+【②筛选数据行】[WHERE 限定条件(s)]
+【③针对于筛选的行分组】[GROUP BY 分组字段,分组字段,...]
+【④针对于筛选的行分组】[HAVING 分组过滤]
+【⑤筛选数据行】[ORDER BY 排序字段 [ASC|DESC],排序字段 [ASC|DESC],...],
+范例:使用HAVING子句
+SELECT job,AVG(sal) FROM emp  GROUP BY job HAVING AVG(sal)>2000;
+ HAVING是在GROUP BY分组之后才执行的筛选,在HAVING里可以直接使用统计函数.
+ 说明:关于WHERE与HAVING的区别?
+  -WHERE子句是在GROUP BY 分组之前进行筛选,指的是选出那些可以参与分组的数据,并且WHERE子句之中不允许使用统计函数
+  -HAVING子句是在GROUP BY分组之后执行的,可以使用统计函数。
+  3.5 分组案例
+   通过两个具体的程序来进行分组统计的操作总结
+  范例1: 显示所有非销售人员的工作名称以及从事同一工作的雇员的月工资总和,
+  并且要求满足从事同一工作雇员的月工资的合计大于5000,显示的结果按照月工资的合计的升序排列。
+  第一步:查询所有非销售人员的信息,WHERE进行限定查询
+  SELECT * FROM emp WHERE job<>'SALESMAN';
+  第二步:按照职位进行分组,而后求出月工资的总支出;
+  SELECT job,SUM(sal) FROM emp WHERE job<>'SALESMAN' GROUP BY job;
+  第三步:分组后的数据进行再次的筛选,使用HAVING子句 
+  SELECT job,SUM(sal) FROM emp WHERE job<>'SALESMAN' GROUP BY job HAVING SUM(sal)>5000;
+  第四步:按照月工资的合计升序排列,使用ORDER BY
+  SELECT job,SUM(sal) sum FROM emp WHERE job<>'SALESMAN' GROUP BY job HAVING SUM(sal)>5000 ORDER BY sum ;
+  范例2:统计所有领取佣金和不领取佣金的人数,平均工资
+     按照简单的单细胞思维模式,现在肯定使用comm分组
+	SELECT comm,COUNT(*),AVG(sal) FROM emp GROUP BY comm;	
+ 使用GROUP BY 的时候会把每一个种子值当作一个分组,所以此时不可能直接使用GROUP BY
+ 那么现在可以换一个思路,如果说把问题拆分一下:
+  -查询出所有领取佣金的雇员的人数,平均工资
+	SELECT '领取佣金' info, COUNT(*),AVG(sal) FROM emp WHERE comm IS NOT NULL;
+  --查询出所有不领取佣金的雇员的人数,平均工资	
+  SELECT '不领取佣金' info, COUNT(*),AVG(sal) FROM emp WHERE comm IS  NULL;
+  既然此时两个查询结果返回的结构完全相同,那么就直接连接好了
+   SELECT '领取佣金' info, COUNT(*),AVG(sal) FROM emp WHERE comm IS NOT NULL
+   UNION
+   SELECT '不领取佣金' info, COUNT(*),AVG(sal) FROM emp WHERE comm IS  NULL;
+   
+子查询 
+所有可能出现的子查询都需要使用"()"声明。所谓的子查询实质上就属于查询嵌套,查询子句的任意位置上
+都可以随意出现子查询。但是出现子查询最多的位置:SELECT、WHERE、FROM。所以针对于子查询的出现给出
+几个个人的参考使用方案:
+  -WHERE子句:子查询返回单行单列,单行多列,多行单列:
+  -HAVING子句:子查询返回单行单列,而且要使用统计函数过滤
+  -FROM子句:子查询返回的是多行多列;
+	-SELECT子句:一般返回单行单列,并且需要某些查询的时候使用;
+3.1 WHERE子句中使用子查询	
+ 1.子查询返回单行单列
+范例:要求查询出公司工资最低的雇员信息。
+第一步:统计公司的最低工资;
+SELECT MIN(sal) FROM emp;
+第二步:以上的查询会返回单行单列,本质上就是一个数值,如果说现在给了你数值,是不是就可以用WHERE
+子句筛选所需要的数据行呢	
+SELECT * FROM emp WHERE sal =(SELECT MIN(sal) FROM emp);
+范例:查找出公司雇佣最早的雇员
+SELECT MIN(hiredate) FROM emp;
+以上的查询会返回单行单列数据,可以直接在WHERE子句中使用
+SELECT * FROM emp WHERE hiredate=(SELECT MIN(hiredate) FROM emp);
+ 2.子查询返回单行多列(了解)
+范例:查询出与SCOTT工资相同,职位相同的所有雇员信息
+现在需要进行比较的是工资与职位,现在很明显首先应该查询到SCOTT的工资与职位
+SELECT sal,job FROM emp WHERE ename='SCOTT';
+此时返回了单行两列的数据信息,而要进行比较的时候肯定是同时满足.
+SELECT * FROM emp WHERE (sal,job)=(SELECT sal,job FROM emp WHERE ename='SCOTT') AND ename<>'SCOTT';
+3.子查询返回多行单列(重点)
+如果子查询返回多行单列,那么实质上就相当于告诉用户一个数据的操作范围。
+而如果要想进行范围的判断,在WHERE子句里面提供有主要的三个运算符:IN,ANY,ALL
+1. IN操作
+   IN操作指的是内容可以在指定的范围之中存在
+   SELECT sal FROM emp WHERE job='MANAGER'; 
+   SELECT * FROM emp WHERE sal IN(SELECT sal FROM emp WHERE job='MANAGER');
+   多行单列就相当于给出了一个查询范围
+ 对于IN操作还可以使用NOT IN 进行。
+ SELECT * FROM emp WHERE sal NOT IN(SELECT sal FROM emp WHERE job='MANAGER');
+   可是在讲解NOT IN 的时候有这样一个问题,不能够为null,现在这一概念此处照样可以使用。
+   SELECT * FROM emp WHERE comm NOT IN(SELECT comm FROM emp) ;
+   一定要保证子查询里面没有null。
+ 2 .ANY操作
+    对于ANY 操作实质上有三种子语法
+	1. =ANY :功能上与IN没有任何差别
+ SELECT * FROM emp WHERE sal =ANY(SELECT sal FROM emp WHERE job='MANAGER');
+ 
+    2. >ANY :比子查询返回的最小的结果要大
+ SELECT * FROM emp WHERE sal >ANY(SELECT sal FROM emp WHERE job='MANAGER');
+ 
+    3. <ANY	:比子查询返回的最大的结果要小
+ SELECT * FROM emp WHERE sal <ANY(SELECT sal FROM emp WHERE job='MANAGER');
+ 
+ 3. ALL操作
+   1. >ALL:比子查询返回的最大的结果要大
+	SELECT * FROM emp WHERE sal >ALL(SELECT sal FROM emp WHERE job='MANAGER');
+   2. <ALL:比子查询返回的最小的值还要小
+   SELECT * FROM emp WHERE sal <ALL(SELECT sal FROM emp WHERE job='MANAGER');
+ 4. exists()判断
+  如果现在子查询有数据返回(不管什么数据)就表示条件满足,那么就显示数据,否则不显示
+范例:观察exists()操作
+SELECT * FROM emp WHERE EXISTS(SELECT * FROM emp WHERE deptno=99);
+  因为此时的子查询没有返回任何的数据行,所以exists就认为数据不存在
+范例:观察exists()操作
+SELECT * FROM emp WHERE EXISTS(SELECT * FROM emp WHERE empno=7839);
+范例:观察exists()操作
+SELECT * FROM emp WHERE EXISTS(SELECT 'hello' FROM dual WHERE 1=1);
+使用exists()只关心子查询里返回的是否有行,至于什么行,它不关心
+范例:使用 NOT EXISTS()
+SELECT * FROM emp WHERE  NOT EXISTS(SELECT 'hello' FROM dual WHERE 1=2);
+对于IN主要是进行数据的判断,EXISTS()是针对于是否存在于数据行进行判断。很明显EXISTS
+要比IN性能要高。因为不关心具体数据。
+
+3.2 在HAVING子句里面使用子查询
+如果要使用到HAVING那么必须要结合GROUP BY 子句,而如果要使用GROUP BY ,那么一定要分组
+范例:要求统计出所有高于公司平均工资的部门编号、平均工资、部门人数
+第一步:根据部门编号分组,统计出每个部门编号的平均工资、部门人数。
+SELECT deptno,COUNT(*),AVG(sal) FROM emp GROUP BY deptno;
+第二步:如果要想知道哪些部门的工资高于平均工资,则应该进行emp表的统计查询
+SELECT AVG(sal) FROM emp;
+此时的子查询返回了单行单列的数据,那么肯定要在HAVING子句里面使用
+第三步:对数据过滤
+SELECT deptno,COUNT(*),AVG(sal) FROM emp GROUP BY deptno HAVING AVG(sal)>(SELECT AVG(sal) FROM emp);
+
+3.3 在SELECT子句中使用子查询(了解)
+首先需要明确的是,这样的操作意义不大,而且性能不高。
+范例:查询每个雇员的编号,姓名,职位,部门名称
+SELECT e.empno,e.ename,e.job,d.deptno FROM emp e,dept d WHERE e.deptno=d.deptno;
+而现在可以利用子查询,在SELECT子句里面简化操作。
+SELECT e.empno,e.ename,e.job,(SELECT dname FROM dept WHERE deptno=e.deptno) FROM emp e;
+实际上在SELECT子句里面出现的子查询核心的目的在于:行列转换
+
+3.4 在FROM子句中出现子查询(重点)
+ 为了解释这种查询的作用,下面做一个简单的查询。
+范例:查询出每个部门的编号,名称,位置,部门人数,平均工资 
+SELECT d.deptno,d.dname,d.loc,COUNT(e.empno),AVG(sal) FROM emp e,dept d WHERE e.deptno(+)=d.deptno GROUP BY d.deptno,d.dname,d.loc;
+但是除了以上的方式之外,也可以利用子查询完成
+首先dept是一张数据表,但是对于数据的统计查询,也可以将其定义为一张表
+SELECT deptno,COUNT(empno) count,AVG(sal) avg FROM emp GROUP BY deptno;
+此时的查询返回的是一个多行多列的数据,那么只要是多行多列,就一定可以在FROM子句中出现
+SELECT d.deptno,d.dname,d.loc,temp.count,temp.avg FROM dept d,(SELECT deptno,COUNT(empno) count,AVG(sal) avg FROM emp GROUP BY deptno) temp
+WHERE d.deptno=temp.deptno(+);
+现在有两种方式实现同样功能的查询,那么这两种方式有什么区别呢?使用哪种?
+为了更好的解释此类问题,现在可以将数据假设扩大100倍,emp表1400条,dept表400条
+分析两种方式:
+ -多表查询后分组统计
+   -数据量:emp*dept=640000;
+ -子查询分组统计
+   -FROM子句的数据量:1400行记录,最多会返回400行记录
+   -与dept表查询:dept表400*最多返回的400=160000;
+   -数据量:分组的1400行+160000行=161400;
+多表查询永恒都会存在性能问题,而子查询主要目的是为了解决多表查询性能问题产生的。   
+
+ 复杂查询案例
+1.列出薪金高于在部门30工作的所有员工的薪金的员工姓名和薪金,部门名称,部门人数。
+ 第一步:找到30部门所有雇员的薪金
+ SELECT sal FROM emp WHERE deptno=30;
+ 第二部:以上查询中返回的是多行单列的数据,这是就可以使用三种判断符判断:IN,ALL,ANY。
+ 根据要求发现找到的是所有员工,使用>ALL
+ SELECT e.ename,e.sal FROM emp e WHERE e.sal>ALL(SELECT sal FROM emp WHERE deptno=30);
+ 第三步:要找到部门的信息,自然在FROM子句之后引入dept表,而后要消除笛卡尔积。用内连接。
+ SELECT e.ename,e.sal,d.dname,d.deptno FROM emp e ,dept d
+ WHERE e.sal>ALL(SELECT sal FROM emp WHERE deptno=30) AND e.deptno=d.deptno;
+ 第四步:需要统计出部门人数的信息
+  思考过程:
+      -如果要进行部门的人数统计,那么一定要按照部门分组。
+	  -在使用分组的时候,SELECT子句只能够出现分组字段与统计函数。
+   于是此时就出现了一个矛盾,因为SELECT子句里面有其他的字段,所以不可能直接使用GROUP BY分组
+  所以可以考虑利用子查询分组,即:在FROM子句之后使用子查询先进行分组统计,而后将临时表继续采用多表查询操作。  
+ SELECT e.ename,e.sal,d.dname,temp.count FROM emp e ,dept d,
+ (SELECT deptno dno,COUNT(empno) count FROM emp GROUP BY deptno) temp
+ WHERE e.sal>ALL(SELECT sal FROM emp WHERE deptno=30) AND e.deptno=d.deptno AND d.deptno=temp.dno;
+2.列出与"SCOTT"从事相同工作的所有员工及部门名称,部门人数,领导姓名。
+ 第一步:需要找到SCOTT的工作
+  SELECT job FROM emp WHERE ename='SCOTT';
+ 第二部:以上的查询返回的是单行单列,所以只能在WHERE或者是HAVING中使用 ,根据现在的需求肯定在
+ WHERE中使用,对所有的雇佣信息进行筛选
+ SELECT e.empno,e.ename,e.job FROM emp e WHERE job=(SELECT job FROM emp WHERE ename='SCOTT');
+ 第三步:如果不需要重复的数据,那么可以删除SCOTT
+ SELECT e.empno,e.ename,e.job FROM emp e WHERE job=(SELECT job FROM emp WHERE ename='SCOTT') AND e.ename<>'SCOTT';
+ 第四步:部门名称只需要加入dept表即可
+ SELECT e.empno,e.ename,e.job ,d.dname FROM emp e,dept d WHERE job=(SELECT job FROM emp WHERE ename='SCOTT') AND e.ename<>'SCOTT'AND e.deptno=d.deptno;
+ 第五步:此时的查询不可能直接使用GROUP BY进行分组,所以需要使用子查询实现分组
+ SELECT e.empno,e.ename,e.job ,d.dname,temp.count FROM emp e,dept d,
+ (SELECT deptno dno,COUNT(empno) count FROM emp GROUP BY deptno) temp 
+ WHERE job=(SELECT job FROM emp WHERE ename='SCOTT') AND e.ename<>'SCOTT'AND e.deptno=d.deptno AND d.deptno=temp.dno;
+ 第六部:找到领导信息,直接使用自身关联
+  SELECT e.empno,e.ename,e.job ,d.dname,temp.count,m.ename FROM emp e,dept d,
+ (SELECT deptno dno,COUNT(empno) count FROM emp GROUP BY deptno) temp,emp m
+ WHERE e.job=(SELECT job FROM emp WHERE ename='SCOTT') AND e.ename<>'SCOTT'AND e.deptno=d.deptno AND d.deptno=temp.dno AND e.mgr=m.empno;
+3.列出薪金比"SMITH"或"ALLEN"多的所有员工的编号,姓名,部门名称,其领导姓名,部门人数,平均工资及最低工资
+第一步:知道"SMITH"或"ALLEN"的工资,这个查询返回多行单列(WHERE中使用)
+SELECT sal FROM emp WHERE ename IN('SMITH','ALLEN');
+第二部:现在应该比里面的任意一个多即可,但是要去掉两个雇员。由于是多行单列子查询,所以使用>ANY完成
+SELECT e.sal,e.ename,e.empno FROM emp e WHERE e.sal>ANY(SELECT sal FROM emp WHERE ename IN('SMITH','ALLEN')) AND e.ename NOT IN ('SMITH','ALLEN');
+第三步:找到部门名称
+SELECT e.sal,e.ename,e.empno,d.dname FROM emp e,dept d WHERE e.sal>ANY(SELECT sal FROM emp WHERE ename IN('SMITH','ALLEN')) AND e.ename NOT IN ('SMITH','ALLEN')
+AND e.deptno=d.deptno;
+第四步:找到领导信息
+SELECT e.sal,e.ename,e.empno,d.dname,m.ename FROM emp e,dept d,emp m WHERE e.sal>ANY(SELECT sal FROM emp WHERE ename IN('SMITH','ALLEN')) AND e.ename NOT IN ('SMITH','ALLEN')
+AND e.deptno=d.deptno AND e.mgr=m.empno(+);
+第五步:部门人数,平均工资及最低工资。整个查询不能直接使用GROUP BY,所以现在应该利用子查询实现统计操作
+SELECT e.sal,e.ename,e.empno,d.dname,m.ename,temp.dno,temp.count FROM emp e,dept d,emp m
+,(SELECT deptno dno,COUNT(empno) count,AVG(sal),MAX(sal),MIN(sal) FROM emp GROUP BY deptno) temp WHERE e.sal>ANY(SELECT sal FROM emp WHERE ename IN('SMITH','ALLEN')) AND e.ename NOT IN ('SMITH','ALLEN')
+AND e.deptno=d.deptno AND e.mgr=m.empno(+) AND d.deptno=temp.dno;
+4.列出受雇日期早于其直接上级的所有员工的编号,姓名,部门名称,部门位置,部门人数。
+第一步:emp表进行自身关联,而后除了设置消除笛卡尔积的条件外,还要设置受雇日期。
+SELECT e.empno,e.ename FROM emp e,emp m WHERE e.mgr=m.empno(+) AND e.hiredate<m.hiredate;
+第二步:找到部门信息,统计部门人数
+SELECT e.empno,e.ename,d.dname,d.loc,temp.count FROM emp e,emp m,dept d
+,(SELECT deptno dno,COUNT(empno) count FROM emp GROUP BY deptno) temp WHERE e.mgr=m.empno(+) AND e.hiredate<m.hiredate AND e.deptno=d.deptno
+AND d.deptno=temp.dno;
+5.列出所有"CLERK"(办事员)的姓名及其部门名称,部门的人数,工资等级
+第一步:找到所有雇员的信息。
+SELECT e.ename FROM emp e WHERE e.job='CLERK';
+第二步:找到部门名称
+SELECT e.ename ,d.dname FROM emp e,dept d WHERE  e.job='CLERK' AND e.deptno=d.deptno;
+第三步:统计出部门的人数
+SELECT e.ename ,d.dname,temp.count FROM emp e,dept d, (SELECT deptno dno,COUNT(empno) count FROM emp GROUP BY deptno) temp WHERE  e.job='CLERK' AND e.deptno=d.deptno
+AND d.deptno=temp.dno;
+第四步:找到工资等级
+SELECT e.ename ,d.dname,temp.count,s.grade FROM emp e,dept d, (SELECT deptno dno,COUNT(empno) count FROM emp GROUP BY deptno) temp,salgrade s WHERE  e.job='CLERK' AND e.deptno=d.deptno
+AND d.deptno=temp.dno AND e.sal BETWEEN s.losal AND s.hisal;
+总结:所谓最复杂的复杂查询也只是将多表查询,统计查询,子查询融合在一起使用,这里面关键注意
+ -笛卡尔积的消除;
+ -GROUP BY 的使用限制

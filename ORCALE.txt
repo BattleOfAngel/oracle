@@ -369,3 +369,5 @@ SELECT TO_DATE('1998-09-19','yyyy-mm-dd') FROM dual;
  SELECT empno,ename,job,DECODE(job,'CLERK','办事员','SALESMAN','销售','MANAGER','经理','ANALYST','分析','PRESIDENT','老板','暂无此信息') FROM emp;
  
  
+ 
+ 
