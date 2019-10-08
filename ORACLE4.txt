@@ -1,0 +1,676 @@
+1.常见的数据类型
+2.表的创建操作
+3.表的删除操作
+4.表的修改操作(不作为重点)
+ 常用数据类型(重点)
+ 表本质上就属于数据集合操作,那么数据的集合里面必然有他要保存的集合类型,在数据库的开发过程中每一个数据库
+ 都会有许多自己支持的数据类型,但是不管扩了多少种数据类型,真正常用的类型就以下几种。
+  -字符串:使用VARCHAR2描述(其他数据库使用VARCHAR),200个字以内的都使用此类型,例:姓名、
+  地址、邮政编码、电话、性别;
+  -数字:在ORACLE之中使用NUMBER来描述数字,如果描述小数使用"NUMBER(m,n)",其中n为小数位,m-n为整数位,单是数据库也考虑程序人员的习惯。
+       - 整数,使用INT;
+	   - 小数,使用FLOAT;
+  -日期:使用DATE是最为常见的做法,但是在ORACLE里面DATE里面也包含有日期时间,可是在其他的数据库里面
+  DATE可能只是日期,DATETIME才表示日期时间;
+  -大文本数据:使用CLOB描述,最多可以保存4G的文本信息;
+  -大对象数据:使用BLOB,保存图片、音乐、电影、文字,最多可以保存4G。
+ 从实际的开发来讲使用使用VARCHAR2、NUMBER、DATE、CLOB。
+
+创建数据表
+ 如果要进行数据表的创建,则可以使用如下的语法完成:
+CREATE TABLE 表名称(
+	列名称 类型 [DEFAULT 默认值],
+	列名称 类型 [DEFAULT 默认值],
+	列名称 类型 [DEFAULT 默认值]
+); 
+范例:创建一张成员表
+CREATE TABLE member(
+	mid       NUMBER,
+	name      VARCHAR2(20)  DEFAULT '无名氏',
+	birthday  DATE          DEFAULT SYSDATE,
+    note      CLOB    
+);
+那么创建完成之后就可以向表中保存数据
+INSERT INTO member(mid,name,birthday,note) VALUES(1,'张三',TO_DATE('1890-10-10','yyyy-mm-dd'),'还活着吗?'); 
+INSERT INTO member(mid,name) VALUES(2,null); 
+默认值指的是如果没有使用字段设置的时候出现,而如果字段明确出现了null,那么内容就是null。
+
+复制表(了解)
+严格来讲复制表不是复制的操作,而是将一个子查询的返回结果变为了一张表的形式保存而已。
+CREATE TABLE 表名称 AS 子查询:
+范例:将所有30部门雇员信息保存在emp30表中 
+CREATE TABLE emp30 AS SELECT * FROM emp WHERE deptno=30;
+  如果现在是一个复杂查询,那么也可以将这个最终的结果保存在数据表中
+  范例:将复杂查询的结果创建为表
+  CREATE TABLE deptstat AS
+  SELECT d.deptno,d.dname,temp.count,temp.avg FROM  dept d,(SELECT deptno,COUNT(*) count,AVG(sal) avg FROM emp GROUP BY deptno) temp
+  WHERE d.deptno=temp.deptno(+);
+ 将此时的统计查询结果保存在deptstat表里面。
+ 除了可以将数据保存在数据表之中,那么还可以将表结构进行复制,即:不复制表内容,只复制表结构。
+ 范例:现在只将emp表的结构复制为empnull表。
+ 只需要设置一个绝对不可能满足的条件即可。
+ CREATE TABLE empnull AS SELECT * FROM emp WHERE 1=2;
+ 
+ 截断表(了解)
+ 事务处理本身是保护数据完整性的一个手段,但是在使用事务处理的过程中需要注意一点;
+ 在用户更新数据后还未进行事务提交中,如果发生了DDL操作,那么所有的事务都会自动提交。
+假如说现在有一张表中的所有数据不再需要了,那么首先想到的是将数据表中的全部数据使用DELETE删除。
+由于事务的控制,所以导致数据不会立被删除。同时这些数据所占用的资源不会立刻消失。
+也就是说我们在一段时间内,此数据是依然会存在的。所以如果使用DELETE删除那么就有可能出现资源被占用的情况。
+为此在ORACLE提供了一种称为截断表的概念,如果表一截断,数据表所占用的资源将全部释放。同时将无法使用事务进行恢复。
+语法:TRUNCATE TABLE 表名称。
+范例:截断myemp表
+TRUNCATE TABLE myemp;
+这个时候才属于彻底的资源释放
+ 
+为表重命名(了解)
+ddl属于数据对象定义语言,主要的功能是 创建对象,所以表创建单词是CREATE。但问题是,这些对象被谁记录呢?
+当用户进行对象操作的时候,ORACLE中提供有一个数据字典用于记录所有的对象状态。也就是说每当用户创建表后,
+那么会自动在数据字典里面增加一行信息,表创建了,表删除了呢也会自动在数据字典里面执行删除操作,但是整个过程
+是由ORACLE自己维护的,用户不能够直接操作数据字典的CRUD。只能够通过命令完成。
+    数据字典用户常用主要分为三类:
+	-USER_*: 用户的数据字典;
+	-DBA_*: 管理员的数据字典;
+	-ALL_*: 所有人都可以看的数据字典。
+在之前使用过这样的语句:
+SELECT * FROM tab; 
+严格来讲此时可以使用数据字典完成,既然是用户的查询,那么可以使用"user_tables"。
+SELECT * FROM user_tables;
+这个数据字典之中记录了保存数据的存储情况、占用的资源情况。
+实际上表的重命名就属于更新数据字典的过程,语法: RENAME 旧的表名称 TO 新的表名称。
+范例:将member表更名为person表
+RENAME member TO person;
+作为ORACLE自己的特点,知道就行了,别用。
+
+删除数据表属于数据库对象的操作,所以此时它的支持语法:
+DROP TABLE 表名称;
+范例:删除emp30表
+DROP TABLE emp30;
+ 在最早的时候,如果执行了删除语句,那么数据表就会直接进行删除了,但是从oracle10g开始,对于删除的操作出现了
+ 一次挽救的机会,类似于windows回收站。称为闪回技术(FLASH BACK)。
+ 在任何数据库里面都不可能有提供批量删除数据表的操作。而且在以后的工作里面,项目中别删除表。
+闪回技术(理解)
+ FlashBack
+用户具备查看,恢复,清空,彻底删除几项操作。
+查看回收站:
+古老命令(不支持了):
+SHOW RECYCLEBIN ;
+通过数据字典。
+COL object_name FOR A35;
+COL ORIGINAL_NAME FOR A35;
+COL type FOR A35;
+SELECT object_name,ORIGINAL_NAME,type,droptime FROM user_recyclebin;
+范例:恢复person表
+FLASHBACK TABLE person TO BEFORE DROP;
+但是有同学认为,这样删除太麻烦,希望可以有像windows那样的彻底删除,所以这个时候可以在删除
+表的时候使用"PURGE"选项。
+范例:彻底删除person表
+DROP TABLE person PURGE;
+  删除回收站中的一张表。
+PURGE TABLE emp30; 
+范例:清空回收站
+PURGE RECYCLEBIN; 
+ 回收站的支持只是ORACLE数据库提供的,其他的数据库还没有此类的支持
+
+修改表结构(了解) 
+在实际的开发之中,为了方便数据库的使用,往往设计人员会给出一个数据库的脚本。这个脚本的后缀一般是"*.sql"。
+--删除数据表
+DROP TABLE member PURGE;
+--清空回收站
+PURGE RECYCLEBIN;
+--创建数据表;
+CREATE TABLE member(
+	mid    NUMBER,
+	name   VARCHAR2(20)
+);
+--测试数据
+INSERT INTO member(mid,name) VALUES(1,'张三');
+INSERT INTO member(mid,name) VALUES(2,'李四');
+--提交事务
+COMMIT;
+  下面就基于这个脚本实现数据表的修改操作。
+1,修改已有列
+例如:增加name这个列的默认值
+ALTER TABLE member MODIFY(name VARCHAR2(30) DEFAULT '无名氏');  
+INSERT INTO member(mid) VALUES(5);
+2.为表增加列
+ALTER TABLE 表名称 ADD(列名称 类型[DEFAULT 默认值],..)
+范例:增加一个address列,这个列上不设置默认值
+ALTER TABLE member ADD(address VARCHAR(30));
+范例:增加一个sex列,这个列上设置默认值
+ALTER TABLE member ADD(sex VARCHAR2(10) DEFAULT '男');
+ 发现一旦有默认值,每一行中的sex内容都会出现。相当于更新了所有。
+3.删除表中的列
+ 任何情况下,删除这种操作都是极其危险的。
+ALTER TABLE 表名称 DROP COLUMN 列名称;
+范例:删除sex列
+ALTER TABLE member DROP COLUMN sex;
+以上的操作知道就行了,能不用就不用。
+ 总结
+1.常用的四种数据类型:VARCHAR2、NUMBER、DATE、CLOB;
+2、对象的操作语法:
+ -创建对象:CREATE 对象类型 对象名称()...;
+ -删除对象:DROP 对象类型 对象名称()...;
+ -修改对象:ALTER 对象类型 对象名称()...;
+ 
+ 1.五种约束的使用
+ 2.约束的管理
+ 数据表本身只支持数据的存储操作,但是在数据库上为了数据表中的数据完整性,需要满足若干条件之后
+ 才可以进行操作,例:某些数据不能够重复,假设定义用户信息,身份证编号绝对不可能重复,本质上来讲
+ 数据库中的约束一共六:数据类型、非空约束、唯一约束、主键约束、外键约束。
+   但是约束是一把双刃剑,约束的确是可以保证数据合法后才进行保存,但是如果在一个数据库里面一张表中设置了
+   过多的约束,那么更新的速度一定会慢。所以在开发之中,某一些验证的操作还是强烈建议交给程序来完成。
+1、非空约束(NOT NULL、NK)
+ 表中某一个字段不允许为空
+ 范例:使用非空约束
+CREATE TABLE member(
+	mid    NUMBER,
+	name   VARCHAR2(20) NOT NULL
+);
+表示name这个列上的数据不允许设置为null;
+范例:正确的增加语句。
+INSERT INTO member(mid,name) VALUES(1,'张三');
+范例:错误的增加 
+INSERT INTO member(mid,name) VALUES(3,null);
+INSERT INTO member(mid) VALUES(3);
+ 执行完语句之后会出现如下的错误提示信息:
+ ORA-01400: 无法将 NULL 插入 ("SCOTT"."MEMBER"."NAME")
+在设置了非空约束之后,如果出现了违反非空约束的操作,那么会自动准确的定位到,哪个模式,哪张表,哪个字段,
+这样在进行错误排查的时候就很方便 
+2.唯一约束(UNIQUE,UK)
+例:现在要收集用户的信息,假设包含编号,姓名,email,那么很明显email的数据不可能重复,所以就可以使用UNIQUE约束完成
+范例:使用唯一约束
+CREATE TABLE member(
+	mid    NUMBER,
+	name   VARCHAR2(20) NOT NULL,
+	email  VARCHAR2(20) UNIQUE
+);
+范例:保存正确的数据
+INSERT INTO member(mid,name,email) VALUES(3,'张三','hello@hello.hello');
+范例:保存重复的数据
+INSERT INTO member(mid,name,email) VALUES(1,'李四','hello@hello.hello');
+ORA-00001: 违反唯一约束条件 (SCOTT.SYS_C0011239)
+  在ORACLE之中约束本身也称为一个对象,也就是说只要你设置了约束,那么Oracle会自动为你创建与之相关的约束对象信息,
+而这些过程都是自动完成的。那么既然是对象,所有的对象就会在数据字典之中进行保存,用户的约束的数据字典应该使用:
+user_constraints。
+范例:查询user_constraints数据字典。
+COL owner FOR A30;
+COL constraint_name FOR A30;
+COL table_name FOR A30;
+SELECT owner,constraint_name,table_name FROM user_constraints;
+  可以发现"user_constrains"数据字典只是告诉用户约束属于哪张表,但是并没有告诉用户约束具体是哪个列上的。
+所以此时可以利另外一个数据字典:user_cons_columns;
+范例:查询"user_cons_columns"数据字典
+COL owner FOR A30;
+COL constraint_name FOR A30;
+COL table_name FOR A30;
+COL column_name FOR A30;
+select owner,constraint_name,table_name,column_name from user_cons_columns;
+  发现唯一约束并不像非空约束那样,可以很明确的告诉用户是哪个列上出现问题,所以为了解决这样的错误,
+可以采用"约束简写_字段"  例:唯一约束的简写是"UK",那么现在是在email上设置了唯一约束,所以可以使用"uk_email"
+来作为此约束的名字,如果要指定名字,则必须在约束创建的时候完成,利:CONSTRAINT关键字定义。
+范例:创建唯一约束,同时设置约束名称
+CREATE TABLE member(
+	mid    NUMBER,
+	name   VARCHAR2(20) NOT NULL,
+	email  VARCHAR2(20),
+	CONSTRAINT uk_email UNIQUE(email)
+);
+此时如果出现了唯一约束的问题,则提示为:
+ORA-00001: 违反唯一约束条件 (SCOTT.UK_EMAIL)
+ 从现在开始,只要是进行数据表创建时,约束一定要设置名字。约束的名字绝对不能够重复
+ 如果说现在设置了唯一约束,但是保存的是null呢?
+ INSERT INTO member(mid,name,email) VALUES(3,'张三',null);
+ null并不在唯一约束的判断范畴之中。
+ 3.主键约束(PRIMARY KEY.PK)
+ 主键约束=非空约束+唯一约束。像一般的用户编号。
+ 范例:定义主键约束
+ DROP TABLE member purge;
+ CREATE TABLE member(
+	mid    NUMBER,
+	name   VARCHAR2(20) NOT NULL,
+	CONSTRAINT pk_mid PRIMARY KEY(mid)	
+);
+范例:增加正确的数据
+ INSERT INTO member(mid,name) VALUES(1,'张三');
+ 错误数据
+ INSERT INTO member(mid,name) VALUES(1,'李四');
+ ORA-00001: 违反唯一约束条件 (SCOTT.PK_MID)
+ INSERT INTO member(mid,name) VALUES(null,'李四');
+ ORA-01400: 无法将 NULL 插入 ("SCOTT"."MEMBER"."MID")
+ 通过这两个错误信息就已经可以确定,主键就是两个约束的集合体。在99%的情况下一张表只能够定义一个主键,当然从
+ sql语法的角度来讲是允许定义多个列为主键,这样的操作往往称为复合主键。如果是复合主键则表示这若干个列的内容完全重复的时候才称为违反约束。
+ 范例:复合主键
+  DROP TABLE member purge;
+ CREATE TABLE member(
+	mid    NUMBER,
+	name   VARCHAR2(20) NOT NULL,
+	CONSTRAINT pk_mid PRIMARY KEY(mid,name)	
+);
+此时将mid与name两个字段同时定义为了主键,所以当两个字段完全重复时才违反约束
+范例:增加正确的数据
+INSERT INTO member(mid,name) VALUES(1,'张三');
+INSERT INTO member(mid,name) VALUES(1,'李四');
+INSERT INTO member(mid,name) VALUES(2,'李四');
+数据库设计第一原则:不要使用复合主键。即:一张表就一张主键。
+4.检查约束(CHECK,CK)
+检查约束指的是在数据列上设置一些过滤条件,当过滤条件满足的时候才可以进行保存,如果不满足则出现错误
+例如:如果设置年龄的信息,年龄0-250、性别:男、女。
+范例:设置检查约束
+  DROP TABLE member purge;
+ CREATE TABLE member(
+	mid    NUMBER,
+	name   VARCHAR2(20) NOT NULL,
+	age    NUMBER(3) , 
+	CONSTRAINT pk_mid PRIMARY KEY(mid),
+    CONSTRAINT ck_age CHECK(age BETWEEN 0 AND 350)		
+);
+范例:保存正确的数据 
+INSERT INTO member(mid,name,age) VALUES(1,'张三',30);
+错误的数据
+INSERT INTO member(mid,name,age) VALUES(1,'张三',121);
+ORA-02290: 违反检查约束条件 (SCOTT.CK_AGE)
+从实际开发来件,检查约束往往不会设置,而检查都会通过程序来完成
+
+5.外键约束(FOREIGN KEY,FK)
+外键约束主要是在父子关系中体现的一种约束操作。
+例如:现在希望描述一种概念:一个人有多本书,如果要涉及表需要设计两张表。
+则初期设计如下
+范例:不使用外键
+  DROP TABLE member purge;
+  DROP TABLE book purge;
+ CREATE TABLE member(
+	mid    NUMBER,
+	name   VARCHAR2(20) NOT NULL,
+	CONSTRAINT pk_mid PRIMARY KEY(mid)
+);
+  CREATE TABLE book(
+	bid    NUMBER,
+	title  VARCHAR2(20) ,
+	mid    NUMBER
+);
+于是下面开始为表增加相关的数据
+范例:增加正确数据
+INSERT INTO member(mid,name) VALUES(1,'张三');
+INSERT INTO member(mid,name) VALUES(2,'李四');
+INSERT INTO book(bid,title,mid) VALUES(10,'JAVA开发',1);
+INSERT INTO book(bid,title,mid) VALUES(11,'ORACLE开发',1);
+INSERT INTO book(bid,title,mid) VALUES(12,'Android开发',2);
+INSERT INTO book(bid,title,mid) VALUES(13,'Object-c开发',2);
+但是此时,也有可能会增加如下的信息
+INSERT INTO book(bid,title,mid) VALUES(20,'精神病与gay',9);
+此时member表中并没有编号为9的成员信息。但是由于此时没有设置所谓的约束,所以即使现在父表(member)中不存在对应的编号,
+那么子表也可以使用,但是这就是一个错误。
+实际上也就发现了,book表中的mid列的内容的取值应该是由member表中的mid列所决定,所以来讲现在就可以利用外键约束来
+解决此类问题。在设置外键约束的时候必须要设置指定的外键列(book.mid)需要与哪张表的哪个列有关联。
+  DROP TABLE member purge;
+  DROP TABLE book purge;
+ CREATE TABLE member(
+	mid    NUMBER,
+	name   VARCHAR2(20) NOT NULL,
+	CONSTRAINT pk_mid PRIMARY KEY(mid)
+);
+  CREATE TABLE book(
+	bid    NUMBER,
+	title  VARCHAR2(20) ,
+	mid    NUMBER,
+	CONSTRAINT fk_mid FOREIGN KEY(mid) REFERENCES member(mid)
+);
+此时book.mid的列的内容的取值范围由member.mid列所决定。如果内容正确,可以保存
+范例:增加错误数据
+INSERT INTO book(bid,title,mid) VALUES(20,'精神病与gay',9);
+ORA-02291: 违反完整约束条件 (SCOTT.FK_MID) - 未找到父项关键字
+所谓的外键就相当于子表中的某一字段的内容由父表来决定其具体的使用数据范围。
+对外键而言最为麻烦的是它存在有一堆的限制。
+限制一:在删除父表之前需要先删除它所对应的全部子表后才可以删除。
+member是父表,book是子表,如果说现在book表没有删除,那么member表无法删除。
+DROP TABLE member;
+ORA-02449: 表中的唯一/主键被外键引用
+所以需要改变删除顺序
+DROP TABLE book;
+DROP TABLE member;
+但是有些时候,一些奇葩的设计者,将A表作为B表的父表,B表也同时设置为了A表的父表,于是删不掉了。
+为此在Oracle里面专门提供了一个强制删除父表的操作,删除之后不关心子表
+DROP TABLE member CASCADE CONSTRAINT; 
+此时将强制性的删除member表,所以这个时候子表不会被删除。
+开发设计表,那么尽量还是按照先后顺序删除。
+限制二:如果要作为子表外键的父表列,那么这个列必须设置唯一约束或者主键约束
+限制三:如果现在主表中的某一行数据有对应的子表数据,那么必须先删除子表中的全部数据之后,才可以删除父表中的数据。
+此时mid为1的数据在book表中有对应的关联。
+DELETE FROM member WHERE mid=1;
+ORA-02292: 违反完整约束条件 (SCOTT.FK_MID) - 已找到子记录
+由于book表中有子记录,所以父表的记录就无法删除了。
+但是如果说现在不想受到自己录的困扰,那么就可以使用及联的操作关系。级联的关系有两种:级联删除,级联更新
+级联删除:
+  所谓的级联删除指的是在父表数据已经被删除的情况下,自动删除其对应子表的数据。在定义外键的时候使用
+  ON DELETE CASCADE 即可。
+  范例:级联删除
+   DROP TABLE book purge;
+    DROP TABLE member purge;
+ CREATE TABLE member(
+	mid    NUMBER,
+	name   VARCHAR2(20) NOT NULL,
+	CONSTRAINT pk_mid PRIMARY KEY(mid)
+);
+  CREATE TABLE book(
+	bid    NUMBER,
+	title  VARCHAR2(20) ,
+	mid    NUMBER,
+	CONSTRAINT fk_mid FOREIGN KEY(mid) REFERENCES member(mid) ON DELETE CASCADE
+);
+ 此时当删除父表数据之后,子表数据会同时删除;
+ 级联更新
+  如果说现在删除父表的时候,那么对应的子表数据列就设置为null。使用ON DELETE SET NULL设置
+范例:设置级联更新
+    DROP TABLE book purge;
+    DROP TABLE member purge;
+ CREATE TABLE member(
+	mid    NUMBER,
+	name   VARCHAR2(20) NOT NULL,
+	CONSTRAINT pk_mid PRIMARY KEY(mid)
+);
+  CREATE TABLE book(
+	bid    NUMBER,
+	title  VARCHAR2(20) ,
+	mid    NUMBER,
+	CONSTRAINT fk_mid FOREIGN KEY(mid) REFERENCES member(mid) ON DELETE SET NULL
+);
+ 什么时候使用级联,什么时候不使用呢?
+
+6.修改约束(了解)
+ 如果表结构的修改还在可以容忍的范畴之内,那么约束的修改绝对是100%禁止的。
+ 所有的约束都要在表创建的时候就设置完整。
+    实际上约束可以进行后期的添加以及后期的删除操作,但是如果要想进行这样的维护,那么必须要保证有约束名称
+范例:数据库脚本
+    DROP TABLE member purge;
+ CREATE TABLE member(
+	mid    NUMBER,
+	name   VARCHAR2(20)
+);
+INSERT INTO member(mid,name) VALUES(1,'张三');
+INSERT INTO member(mid,name) VALUES(1,'李四');
+INSERT INTO member(mid,name) VALUES(2,'null');
+1.增加约束
+ALTER TABLE 表名称 ADD CONSTRAINT 约束名称 约束类型(字段) 选项...
+范例:为member表增加主键约束
+ALTER TABLE member ADD CONSTRAINT pk_mid PRIMARY KEY(mid);
+ORA-02437: 无法验证 (SCOTT.PK_MID) - 违反主键
+因为此时表中已经存在有相同的id编号了,所以这个时候约束是不可能创建成功的。
+利用以上的语法可以实现四种约束的增加:主键、唯一、检查、非空,但是不包含非空。
+ALTER TABLE member ADD CONSTRAINT nk_name NOT NULL(name);
+如果要想为字段增加非空约束,只能依靠修改表结构
+范例:增加非空约束
+ALTER TABLE member MODIFY (name VARCHAR2(20) NOT NULL);
+但是需要保证此时name列上没有null值;
+2.删除约束
+ALTER TABLE 表名称 DROP CONSTRAINT 约束名称;
+范例:删除主键约束
+ALTER TABLE member DROP CONSTRAINT pk_mid;
+  所以综合来讲,不要修改表结构,约束一定要和表结构一起创建
+总结
+ 1.创建表,约束要一起完成;
+ 2.重要的约束:PRIMARY KEY ,FOREIGN KEY ,NOT NULL。 
+
+题目： 现有一个商店的数据库，记录顾客及其购物情况，由下面三个表组成：
+商品product（商品号productid，商品名productname，单价unitprice，商品类别category，供应商provider）；
+顾客customer（顾客号customerid，姓名name，住址location）；
+购买purcase（顾客号customerid，商品号productid，购买数量quantity）；
+每个顾客可以购买多件商品，每件商品可以被多个顾客购买，属于多对多的关系。
+试用SQL语言完成下列功能：
+1 建表，在定义中要求声明如下约束：
+(1)每个表的主外键；
+(2)顾客的姓名和商品名不能为空值；
+(3)单价必须大于0，购买数量必须再0到20之间；
+2 往表中插入数据：
+商品（M01，佳洁士，8.00，牙膏，宝洁；
+      M02，高露洁，6.50，牙膏，高露洁；
+      M03，洁诺，5.00，牙膏，联合利华；
+      M04，舒肤佳，3.00，香皂，宝洁；
+      M05，夏士莲，5.00，香皂，联合利华；
+      M06，雕牌，2.50，洗衣粉，纳爱斯
+      M07，中华，3.50，牙膏，联合利华；
+      M08，汰渍，3.00，洗衣粉，宝洁；
+      M09，碧浪，4.00，洗衣粉，宝洁；）
+顾客（C01，Dennis，海淀；
+      C02，John，朝阳；
+      C03，Tom，东城；
+      C04，Jenny，东城；
+      C05，Rick，西城；） 
+购买(C01，M01，3；     
+     C01，M05，2；
+     C01，M08，2；    
+     C02，M02，5；
+     C02，M06，4；     
+     C03，M01，1；
+     C03，M05，1；     
+     C03，M06，3； 
+     C03，M08，1；    
+     C04，M03，7；
+     C04，M04，3；       
+     C05，M06，2； 
+     C05，M07，8；）
+商品有9 条,顾客有5条,购买有13条
+3 用PL/SQL块编程完成下列查询要求：
+（1）求购买了供应商"宝洁"产品的所有顾客；
+（2）求购买的商品包含了顾客"Dennis"所购买的所有商品的顾客（姓名）；
+（3）求牙膏卖出数量最多的供应商。
+4 将所有的牙膏商品单价增加10%。(SQL语句)
+5 删除从未被购买的商品记录。(SQL语句)
+ 
+ 1.数据表的创建
+对于数据表的创建需要考虑的问题在于数据类型的选择。列的数据类型通过具体的数据推出。
+最后一定要提交事务:
+COMMIT;
+如果事务不提交,session一旦关闭,数据就消失了。
+3.数据查询
+  与之前的部门和雇员不同的是,本次的查询属于多对多的应用,这一点在某种程度上就决定了查询的复杂度。
+（1）求购买了供应商"宝洁"产品的所有顾客；
+		-确定要使用的数据表
+		  -customer表:可以取得顾客信息;
+		  -product表:商品表中可以找到供应商信息。
+		  -purcase表:保存顾客购买商品的记录
+		-确定已知的关联字段
+		第一步:找到供应商"宝洁"的所有商品编号,因为有了商品编号才可以查询购买记录
+    SELECT productid
+    FROM product 
+	WHERE provider='宝洁';
+第二部:以上的查询返回多行单列,按照要求来讲,应该在WHERE子句之中出现,
+所以现在又属于一个范围的匹配,那么可以使用IN进行判断,找出购买记录是为了找到顾客信息。
+    SELECT  customerid	
+	FROM purcase WHERE productid IN(
+		SELECT productid
+    FROM product 
+	WHERE provider='宝洁'	
+	);
+第三步:以上返回了顾客编号,直接利用WHERE子句过滤即可	
+	SELECT *
+	FROM customer
+	WHERE customerid IN(
+	 SELECT  customerid	
+	FROM purcase WHERE productid IN(
+	SELECT productid
+	FROM product 
+	WHERE provider='宝洁')
+	);
+（2）求购买的商品包含了顾客"Dennis"所购买的所有商品的顾客（姓名）；
+		-确定要使用的数据表
+		  -customer表:可以取得顾客信息;
+		  -product表:商品表中可以找到供应商信息。
+		  -purcase表:保存顾客购买商品的记录
+第一步:	至少需要知道"Dennis"购买了哪些商品,要想查购买记录只需要顾客编号即可。
+顾客编号通过customer表查询
+		SELECT productid
+		FROM purcase
+		WHERE customerid=
+		(SELECT customerid
+		FROM customer
+		WHERE name='Dennis');
+可以发现,此人购买了M01,M05,M08的信息,而其他用户必须包含这些内容才可以算是购买过此商品。
+现在先不嵌套子查询,就假设已经知道了购买的顾客编号为"C01"。
+范例:"C01"的购买记录:M01,M05,M08
+SELECT productid FROM purcase WHERE customerid='C01';
+范例:"C02"的购买记录:M02,M06
+SELECT productid FROM purcase WHERE customerid='C02';
+*范例:"C03"的购买记录:M01,M05,M06,M08
+SELECT productid FROM purcase WHERE customerid='C03';
+范例:"C04"的购买记录:M03,M04
+SELECT productid FROM purcase WHERE customerid='C04';
+范例:"C05"的购买记录:M06,M07
+SELECT productid FROM purcase WHERE customerid='C05';
+	那么现在的问题就在于如何可以将3号保留,其他编号删除呢?于是可以用集合操作。
+通过差集计算发现可以找到规律	
+范例:01和02顾客做差运算	结果:M01,M05,M08
+	SELECT productid FROM purcase WHERE customerid='C01'
+	minus
+	SELECT productid FROM purcase WHERE customerid='C02';
+范例:01和03顾客做差运算	结果:未选定行(null)
+	SELECT productid FROM purcase WHERE customerid='C01'
+	minus
+	SELECT productid FROM purcase WHERE customerid='C03';
+如果包含有C01的全部内容差的结果是null,曾经学过一个运算符,这个运算符的特点是有数据则查询,没数据就不查
+	SELECT * FROM customer ca 
+	WHERE NOT EXISTS(
+	SELECT p1.productid
+		FROM purcase p1
+		WHERE customerid=
+		(SELECT customerid
+		FROM customer
+		WHERE name='Dennis') minus
+	SELECT p2.productid FROM purcase p2 WHERE customerid=ca.customerid
+	) AND ca.name<>'Dennis';
+		-确定已知的关联字段
+（3）求牙膏卖出数量最多的供应商。
+        -确定要使用的数据表
+		   -product表:供应商信息,,商品分类,以及出售数量
+		   -purcase表:销售记录。
+第一步:查找出牙膏的商品编号,如果没有编号就不可能知道购买记录。
+    SELECT productid FROM product WHERE category='牙膏';
+第二步:以上查询返回多行单列,想也不用想,在WHERE子句使用。根据purcase找到所有的购买过此商品的数量。
+	SELECT productid,SUM(quantity) 
+	FROM purcase
+	WHERE productid IN(
+	  SELECT productid FROM product WHERE category='牙膏')
+	  GROUP BY productid;
+第三步:要找的最高的商品销售数量,所以需要进行统计函数嵌套,而一旦嵌套之后,统计查询的SELECT子句里面不允许出现任何字段。
+	SELECT productid,SUM(quantity) 
+	FROM purcase
+	WHERE productid IN(
+	  SELECT productid FROM product WHERE category='牙膏')
+	  GROUP BY productid
+	  HAVING SUM(quantity)=(
+		SELECT MAX(SUM(quantity)) 
+	FROM purcase
+	WHERE productid IN(
+	  SELECT productid FROM product WHERE category='牙膏')
+	  GROUP BY productid
+	  );
+第四步:由于最后只是需要一个供应商,只需要根据商品编号查到供应商信息即可。
+    SELECT provider 
+    FROM product
+    WHERE productid=(
+		SELECT productid
+	FROM purcase
+	WHERE productid IN(
+	  SELECT productid FROM product WHERE category='牙膏')
+	  GROUP BY productid
+	  HAVING SUM(quantity)=(
+		SELECT MAX(SUM(quantity)) 
+	FROM purcase
+	WHERE productid IN(
+	  SELECT productid FROM product WHERE category='牙膏')
+	  GROUP BY productid
+	  )
+	);	
+		-确定已知的关联字段
+这就是多对多的查询
+ 4.数据更新
+4 将所有的牙膏商品单价增加10%。(SQL语句)
+	UPDATE product SET unitprice=unitprice*1.1 WHERE category='牙膏';
+5 删除从未被购买的商品记录。(SQL语句) 
+第一步:找出所有购买过的商品信息
+    SELECT productid FROM purcase;
+第二部:使用NOT IN 就可以表示未购买过的商品记录
+    DELETE FROM product WHERE productid NOT IN(SELECT productid FROM purcase);
+总结
+1.建表,约束;
+2.数据更新与查询	
+
+1.事务处理对于DDL不起作用
+2.查询,更新,数据表,约束
+
+ 在许多数据库之中都会存在一种数据类型 --自动增长列,它能够创建流水号。
+但是非常遗憾的是,在Oracle12C以前并没有提供这样自动的增长列,但是从Oracle12C
+开始出现了自动增长列,如果要想在ORACLE之中使用这样的自动增长列,那么就可以使用序列的方式完成。
+  如果要想使用序列,则可以采用如下的语法完成创建。
+ CREATE SEQUENCE 序列名称 
+ [MAXVALUE 最大值 | NOMAXVALUE]
+ [MINVALUE 最小值 | NOMINVALUE]
+ [INCREMENTBY 步长] [START WITH 开始值]
+ [CYCLE | NOCYCLE]
+ [CACHE 缓存个数| NOCCACHE]
+   序列属于数据库对象的创建过程,属于DDL的分类范畴,对于序列而言,那么创建之后,一定会在
+   数据字典之中保存。
+CREATE SEQUENCE myseq;
+   既然序列的对象信息会在数据字典之中保存,那么现在就可以查询序列的数据字典。
+范例:查询user_sequences数据字典
+SELECT * FROM user_sequences;  
+  SEQUENCE_NAME                                                 MIN_VALUE  MAX_VALUE INCREMENT_BY CY OR CACHE_SIZE LAST_NUMBER
+------------------------------------------------------------ ---------- ---------- ------------ -- -- ---------- -----------
+MYSEQ                                                                 1 1.0000E+28            1 N  N       20      1
+
+对于以上的数据字典的返回结果分析如下:
+    -SEQUENCE_NAME:序列名称,本次为MYSEQ;
+	-MIN_VALUE:当前数列的最小值,本次为1;
+	-MAX_VALUE:当前序列的最大值,本次为1.0000E+28;
+	-INCREMENT_BY:每次序列增长的步长内容:
+	-CY:是否为循环序列,本次为"N";
+	-OR:是否需要排序:
+	-CACHE_SIZE:缓存个数,默认20个;
+	-LAST_NUMBER:最后的数值。
+现在序列已经创建成功了,如果要想使用序列则可以使用如下的两个伪列	
+    -nextval:取得序列下一个内容,每一次调用序列的值都会增长:
+	-currval:表示取得序列的当前内容,每一次调用序列不会增长,如果要想使用此伪列,那么在使用之前
+必须首先使用nextval取得内容才可以
+SELECT myseq.nextval FROM dual;
+SELECT myseq.currval FROM dual;
+	如果要想在实际开发之中使用序列进行开发操作,那么必须手工在数据增加的时候进行处理,
+而数据表的定义与之前没有任何的区别。
+CREATE TABLE mytab(
+	id     NUMBER,
+	name   VARCHAR2(50),
+	CONSTRAINT pk_id PRIMARY KEY(id)
+);
+此时的数据与原始相比没有任何区别,但是最关键的部分是在数据增加的时候,由于id属于一个主键列,
+所以可以利用序列来生成id的内容。
+INSERT INTO mytab(id,name)VALUES(myseq.nextval,'HELLO');
+  以上的操作作为序列在实际开发之中使用最多的一种情况,但是从序列的创建语法来讲,并不是这么简单,
+  需要针对对于序列进一步分析。
+    那么首先需要来先解决缓存的作用是什么?
+	SELECT myseq.nextval FROM dual;
+	SELECT sequence_name,cache_size,last_number FROM user_sequences;
+	在序列的操作过程中,为了保证序列操作的性能问题,所以会利用缓存,在用户未使用到指定的序列值时,自动的将内容创建好,
+	这样用户在使用序列时就不是一起创建的了,从而达到性能的提升。
+	但是缓存本身会存在一个丢号的问题,如果数据库关闭了,那么序列的内容就可能无法连续了。称为跳号问题。
+	但是以上所创建的只是标准的序列操作,而实际上序列也可以创建一些特殊情况。
+范例:改变序列的开始值与步长
+  DROP SEQUENCE myseq;	
+  CREATE SEQUENCE myseq
+  INCREMENT BY 2;
+   一定要记住数据字典之中的LAST_NUMBER它的结果是缓存个数*步长
+范例:改变序列的开始值
+ DROP SEQUENCE myseq;	
+  CREATE SEQUENCE myseq
+  INCREMENT BY 2
+  START WITH 100000;
+在序列的使用过程之中还可以创建一个循环序列的概念,例如:现在希望序列可以在1,3,5,7,9之间循环使用。
+所以此时就需要设置序列的 最大值:9 最小值:1 而且设置为循环
+ DROP SEQUENCE myseq;	
+  CREATE SEQUENCE myseq
+  INCREMENT BY 2
+  START WITH 1
+  MINVALUE 1 MAXVALUE 9
+  CYCLE NOCACHE;
+ORA-04013: CACHE 值必须小于 CYCLE 值  
+ 不过从实际来讲,序列的使用往往都不需要这么复杂,就生成一个流水号就够了。
+总结 
+1.序列的创建语法必须记熟

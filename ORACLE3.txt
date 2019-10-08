@@ -1,0 +1,174 @@
+  在SQL语句中,DML语法包含有两内容:查询、更新,对于查询主要以复杂查询为主,而更新操作主要分为
+三种:增加、修改、删除。
+  CREATE TABLE myemp AS SELECT * FROM emp;
+3.1 数据增加
+  INSERT INTO 表名称[(字段名称,字段名称,...)] VALUES(数据,数据...); 
+  但是对于数据的增加操作需要注意一点,关于数据的定义问题;
+   -字符串;使用"'" 声明, 例如: "'你好'";
+   -数值; 直接编写,例如:100;
+   -日期; 有三种方式可以选择:
+     -  可以设置为当前日期:SYSDATE; 
+	 -  根据日期的保存结构编写字符串:'天-月-年';
+	 -  可以利TO_DATE()函数将字符串转换为DATE型数据。
+范例:实现数据增加
+   -使用完整语法实现数据增加:要求明确的编写列	 
+   INSERT INTO myemp(empno,job,sal,hiredate,ename,deptno,mgr,comm)
+   VALUES(6666,'清洁工',2000,TO_DATE('1988-10-10','yyyy-mm-dd'),'王二',40,7369,null);
+    INSERT INTO myemp(empno,job,sal,hiredate,ename,deptno,mgr)
+   VALUES(6667,'清洁工',2000,TO_DATE('1988-10-10','yyyy-mm-dd'),'王二',40,7369);
+   -简化的语法格式
+    INSERT INTO myemp 
+   VALUES(6688,'清洁工',2000,TO_DATE('1988-10-10','yyyy-mm-dd'),'王二',40,7369,null);
+   第 2 行出现错误:
+ORA-00932: 数据类型不一致: 应为 NUMBER, 但却获得 DATE
+	  INSERT INTO myemp 
+   VALUES(6688,'王二','清洁工',7369,TO_DATE('1988-10-10','yyyy-mm-dd'),2000,40,null);
+    通过以上的两简单对比,就可以发现增加时是绝对不可能使用简化格式,包括在日后的开发也一样,
+不管代码怎么写,一定要写完整格式的数据增加。
+3.2 数据修改
+ UPDATE 表明称 SET 字段=内容,字段=内容	,...[WHERE 更新条件(s)]
+范例:要求将7369的雇员工资修改为810,佣金改为100;
+UPDATE myemp SET SAL=810,comm=100 WHERE empno=7369;
+已更新 1 行。
+范例: 将工资工资最低的雇员工资修改为公司的平均工资。
+UPDATE myemp SET sal =(SELECT AVG(sal) FROM myemp) WHERE sal=(SELECT MIN(sal) FROM myemp);
+范例:将所有在81年雇佣的雇员的雇佣日期修改为今天,工资增长20%。
+SELECT * FROM myemp WHERE TO_CHAR(hiredate,'yyyy')=1981;
+UPDATE myemp SET hiredate=SYSDATE,sal=sal*1.2 WHERE hiredate BETWEEN '01-1月-1981' AND 
+'31-12月-1981';
+如果在更新的过程中并没有设置更新条件,那么就表示更新全部数据
+范例:数据的更新操作
+UPDATE myemp SET comm=null;
+如果不加更新条件,那么最终的结果就是表中的记录全部要被更新,
+但是这种全部更新的操作不建议使用。
+
+3.3 数据删除
+DELETE FROM 表明称[WHERE 删除条件(s)];
+范烈:删除雇员编号为7369的雇员信息
+DELETE FROM myemp WHERE empno=7369;
+范例:删除若干个数据
+DELETE FROM myemp WHERE empno IN(7566,7788,7899);
+而删除操作也可以结合子查询完成。
+范例:删除掉公司之中工资最高的雇员。
+DELETE FROM myemp WHERE sal = (SELECT MAX(sal) FROM myemp);
+如果本身就想删除全部数据,那么就不设置删除条件;
+DELETE FROM myemp;
+ 全部删除数据的操作几乎是不可能出现的。
+
+事务:是保证数据完整性的一种手段。事务具备ACID原则,保证你一个人更新数据的时候,
+其他人不能更新。
+在ORACLE之中,sqlplus是一个客户端。但是对于ORACLE服务而言,每一个sqlplus
+客户端都是独立的,都使用一个session描述。
+在事务处理之中提供有两个核心的命令;
+  -提交事务:commit;
+  -回滚事务:rollback;
+DELETE FROM myemp WHERE empno=7369;
+COMMIT; 
+真正使用了commit提交的时候才表示更新是可以正常完成的。所有的更新操作都需要被事务所保护。
+  小桃要给我汇款:
+	  1	-从小桃的账户上减少5000w;
+	  2	-在本人的账户上增加5000w:
+	  3	-扣除转账手续费50:
+   假如说现在第二步没有实现,小桃的账上应该恢复5000w,但是如果没有事务处理,那么就表示.如果
+现在更新金额,就表示数据已经可以正常提交,不管我的账户上是否增加有金额都减少。所以事务的好处是在一组
+更新操作后再进行提交处理,这样才可以保证数据的完整性。
+  要成功就一起成功,要失败就退回原点。
+   
+   如果按照之前的讲解,每一个session都进行自己的事务处理,那么如果说现在两个session同时操作了同一条数据该如何?
+       下面通过一个具体的演示来说明存在的问题。
+范例:第一个session更新7566的雇员信息。
+UPDATE myemp SET sal=5000 WHERE empno=7566;
+  此时的session并没有提交或回滚事务
+范例: 第二个session更新7566的雇员信息。
+UPDATE myemp SET comm=9000 WHERE empno=7566; 
+  此时发现更新操作并不能够完成,因为两不同的session更新了同一条数据,那么此时就会出现一种情况:锁
+  即,在第一个session没有提交或回滚前,第二个session要一直等待着更新完成。所以在事务的处理过程之中,是
+  存在行级锁定的概念,即;在提交或回滚更新之前,只能够有一个session操作数据,事务的隔离性。
+     虽然这种事务的处理很方便,但是这种锁定就很麻烦了。
+     平均每秒的在线人数有300人  每天 25,920,000人。 假设这个站定的用户有3000w个用户(这3000w的用户如果要登陆还要进行一些数据表的更新操作)。突然有一天
+	 施工的老板说,小施,你把所有用户的某一个字段的内容统一更新为一个数据。那么这个时候有两个解决方案:
+	   -直接发出update更新全部指令,目的是让3000w条数据一起完成更新;
+	     -假设现在每更新10条数据需要1秒时间,大约34天工作完成。
+         -在这34天之内,所有的用户无法登录
+    在整个程序的世界里面只有两个方法可以评价程序:时间复杂度、空间复杂度。所以现在发现,第一种做法实际上是
+拿时间换了空间。因为现在服务器有限。但是现实中太可怕。
+       -按照空间换时间的思路,可以利用一个周期来完成,不直接更新所有的用户信息,而是让每一个用户信息,在他使用的时候
+才进行更新,虽然不是立刻所有的用户发生了改变,但是慢慢的大部分的活跃用户就都进行了修改,而那些僵尸用户,可以在集中进行处理。
+   1、事务的核心处理命令:COMMIT、ROLLBACK;
+   2、每一个session具备独立的事务,并且在未提交前更新的数据行锁定。   
+	 
+  ROWNUM、ROWID
+  在之前学习过sysdate伪列,所谓的伪列指的是列本身不存在,但是却可以进行使用的列,两个非常重要的伪列 ROWNUM、ROWID。
+行号:ROWNUM(核心)
+如果在开发之中使用了ROWNUM,n那么就表示会自动生成行号。
+SELECT ROWNUM,empno,ename,job FROM emp;
+ROWNUM是一个伪列,只是使用它生成行号。  
+  发现ROWNUM在每一行显示的时候都会自动增加一个行号,但是需要记住的,ROWNNUM生成的行号不是固定的,而是动态计算得来的。
+  范例:观察ROWNUM 
+SELECT ROWNUM,empno,ename,job FROM emp WHERE deptno=10; 
+ 此时行号是根据查询结果动态计算出来的,所以每一个行号都不会与特定的记录捆绑。
+ 在实际的开发过程之中,ROWNUM可以做两件事:
+  -取得第一行数据;
+  -取得第N行数据;
+范例:查询emp表中的记录并且取得第一行数据 
+SELECT ROWNUM,empno,ename,job FROM emp WHERE deptno=10 AND ROWNUM=1;
+解释:为什么NOT IN 里面不能够有null。
+NOT IN(null),如果某一列上的内容就没有null,那么就表示查询全部。但是NOT IN本身的作用是进行数据的部分筛选,
+结果由于自身的数据错误,导致查询全部,那么就是灾难了。
+一般而言有经验的工程师都不会用"SELECT * FROM 表",都会做一个限定查询,例如:查询第一行,这个时候就可以利用
+ROWNUM完成。SELECT * FROM costs WHERE ROWNUM=1;
+对ROWNUM而言最为重要的特性是在于它可以取得前N行记录。
+范例:取得emp表的前5行记录。
+SELECT ROWNUM,empno,ename FROM emp WHERE ROWNUM<=10;
+范例:取得6-10条记录。
+ 错误的做法:
+ SELECT ROWNUM,empno,ename FROM emp WHERE ROWNUM BETWEEN 6 AND 10;
+在数据表的查询过程之中,ROWNUM不能够定义范围,所以此时要想正确实现所需要的
+功能,那么就必须利用子查询完成,在子查询中先查询前10行记录,而后再查询后5行记录。
+SELECT * FROM (  SELECT ROWNUM rn,empno,ename FROM emp WHERE ROWNUM<=10 ) temp WHERE temp.rn>5;
+上一页,下一页的程序的实现就利用了以上的查询语句。
+对分页而言,往往都有一个属于自己的固定语法形式,下面给出参考格式:
+ -currentPage,表示的是当前所在页;
+ -lineSize,表示每页显示的数据行;
+SELECT * FROM (
+ SELECT ROWNUM rn,列,...FROM 表名称
+ WHERE ROWNUM<currentPage*lineSize) temp WHERE temp.rn>(currentPage-1)*lineSiz;
+ 范例:现在假设在第3页。(currentPage=3),每页显示5行记录(lineSize=5)
+ SELECT * FROM (
+ SELECT ROWNUM rn,empno,ename FROM emp
+ WHERE ROWNUM<15) temp WHERE temp.rn>10;
+  所有的开发之中都会存在有这样的程序,所以此类格式必须重点掌握。
+  
+  行ID:ROWID(理解)
+ ROWID大部分情况下是针对于一些分析上使用的 ,而且在实际的开发过程之中,你也不会感受到ROWID存在。
+ 所谓的ROWID指的是针对于每行数据提供的物理地址。
+ 范例:查看ROWID
+ SELECT ROWID,deptno,dname,loc FROM dept;
+ 以"AAAR3qAAEAAAACHAAA"这个数据为例,ROWID组成;
+  -数据对象编号: AAAR3q
+  -数据文件编号: AAE
+  -数据保存的块号: AAAACH
+  -数据保存的行号:AAA
+ 面试题:表中有许多完成重复的数据,要求将重复的数据删掉(只剩最早一个);
+ (为了还原题目可以将dept表复制为mydept表)
+ CREATE TABLE mydept AS SELECT * FROM dept;
+ 有一张mydept表,由于疏于管理,导致表中出现了很多重复的内容,并且这些内容还是全都重复。
+ 范例:增加若干条数据。
+ INSERT INTO mydept(deptno,dname,loc) VALUES (10,'ACCOUNTING','NEW YORK');
+ INSERT INTO mydept(deptno,dname,loc) VALUES (20,'RESEARCH','DALLAS');
+ INSERT INTO mydept(deptno,dname,loc) VALUES (30,'SALES','CHICAGO');
+ INSERT INTO mydept(deptno,dname,loc) VALUES (10,'ACCOUNTING','NEW YORK');
+ 所以现在的问题是:表中的数据列的信息几乎都是一样的,所以如果按照已有的字段删除,那么最终的结果都会被删掉。
+那么现在即便数据重复了,在ORACLE里面存在有一个ROWID,它的物理保存地址也是不可能重复的。
+ 在程序之中都会设计累加的操作,所以理论上来讲,最早保存数据的ROWID内容应该是最小的。如果要想确认最小
+ 肯定使用MIN()函数完成。
+   现在mydept表中的数据有重复,那么可以采用分组,按照重复内容分组之后统计出最小的ROWID(最早的ROWID)。
+  SELECT deptno,dname,loc,MIN(ROWID) FROM mydept
+  GROUP BY deptno,dname,loc;  
+  以上的查询返回了所有需要保留的数据,那么所有不需要的数据就可以删除了。
+  DELETE FROM mydept WHERE ROWID NOT IN ( SELECT MIN(ROWID) FROM mydept
+  GROUP BY deptno,dname,loc); 
+ 最终清楚完无用数据的结果为:
+ SELECT ROWID,deptno,dname,loc FROM mydept;
+ 不过这样的操作只是一个使用的说明,更多情况下ROWID在以后讲解索引的时候会使用到。
+ 
